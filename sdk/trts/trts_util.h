@@ -49,7 +49,7 @@ bool is_stack_addr(void *address, size_t size);
 bool is_valid_sp(uintptr_t sp);
 
 int heap_init(void *_heap_base, size_t _heap_size, size_t _heap_min_size, int _is_edmm_supported);
-int feature_supported(const uint64_t *feature_set, uint32_t feature_shift);
+int feature_supported(uint64_t *feature_set, uint32_t feature_shift);
 
 #ifdef __cplusplus
 }

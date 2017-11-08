@@ -42,7 +42,6 @@
 #include "trts_internal.h"
 #include "trts_inst.h"
 #include "trts_emodpr.h"
-#include "metadata.h"
 #  include "linux/elf_parser.h"
 #  define GET_TLS_INFO  elf_tls_info
 
@@ -113,15 +112,7 @@ static uintptr_t g_tcs_cookie = 0;
 #define ENC_TCS_POINTER(x)  (uintptr_t)(x) ^ g_tcs_cookie
 #define DEC_TCS_POINTER(x)  (void *)((x) ^ g_tcs_cookie)
 
-// do_save_tcs()
-//      Save tcs while function do_ecall_add_thread invoked.
-// Parameters:
-//      [IN] ptcs - the tcs_t pointer which need to be saved
-// Return Value:
-//     zero - success
-//     non-zero - fail
-//
-static sgx_status_t do_save_tcs(void *ptcs)
+static sgx_status_t do_save_tcs(void *ms)
 {
     if(unlikely(g_tcs_cookie == 0))
     {
@@ -142,13 +133,19 @@ static sgx_status_t do_save_tcs(void *ptcs)
         sgx_spin_unlock(&g_tcs_node_lock);
     }
 
+    struct ms_tcs *ms_tcs = (struct ms_tcs*)ms;
+    if (ms_tcs == NULL || ms_tcs->ptcs == NULL)
+    {
+        return SGX_ERROR_UNEXPECTED;
+    }
+
     tcs_node_t *tcs_node = (tcs_node_t *)malloc(sizeof(tcs_node_t));
     if(!tcs_node)
     {
         return SGX_ERROR_UNEXPECTED;
     }
 
-    tcs_node->tcs = ENC_TCS_POINTER(ptcs);
+    tcs_node->tcs = ENC_TCS_POINTER(ms_tcs->ptcs);
 
     sgx_spin_lock(&g_tcs_node_lock);
     tcs_node->next = g_tcs_node;
@@ -156,45 +153,6 @@ static sgx_status_t do_save_tcs(void *ptcs)
     sgx_spin_unlock(&g_tcs_node_lock);
 
     return SGX_SUCCESS;
-}
-
-// do_del_tcs()
-//      Delete tcs from the global tcs list.
-// Parameters:
-//      [IN] ptcs - the tcs_t pointer which need to be deleted
-// Return Value:
-//     N/A
-//
-static void do_del_tcs(void *ptcs)
-{
-    sgx_spin_lock(&g_tcs_node_lock);
-    if (g_tcs_node != NULL)
-    {
-        if (DEC_TCS_POINTER(g_tcs_node->tcs) == ptcs)
-        {
-            tcs_node_t *tmp = g_tcs_node;
-            g_tcs_node = g_tcs_node->next;
-            free(tmp);
-        }
-        else
-        {
-            tcs_node_t *tcs_node = g_tcs_node->next;
-            tcs_node_t *pre_tcs_node = g_tcs_node;
-            while (tcs_node != NULL)
-            {
-                if (DEC_TCS_POINTER(tcs_node->tcs) == ptcs)
-                {
-                    pre_tcs_node->next = tcs_node->next;
-                    free(tcs_node);
-                    break;
-                }
-
-                pre_tcs_node = tcs_node;
-                tcs_node = tcs_node->next;
-            }
-        }
-    }
-    sgx_spin_unlock(&g_tcs_node_lock);
 }
 
 static volatile bool           g_is_first_ecall = true;
@@ -332,60 +290,27 @@ sgx_status_t do_ecall_add_thread(void *ms, void *tcs)
 {
     sgx_status_t status = SGX_ERROR_UNEXPECTED;
 
-    struct ms_tcs *ms_tcs = (struct ms_tcs*)ms;
-    if (ms_tcs == NULL)
-    {
-        return status;
-    }
-
-    if (!sgx_is_outside_enclave(ms_tcs, sizeof(struct ms_tcs)))
-    {
-        abort();
-    }
-
-    void* ptcs = ms_tcs->ptcs;
-    if (ptcs == NULL)
-    {
-        return status;
-    }
-
     status = do_init_thread(tcs);
-    if(SGX_SUCCESS != status)
+    if(0 != status)
     {
         return status;
     }
 
-    status = do_save_tcs(ptcs);
-    if(SGX_SUCCESS != status)
-    {
-        return status;
-    }
+    status = do_save_tcs(ms);
 
-    status = do_add_thread(ptcs);
-    if (SGX_SUCCESS != status)
+    if (SGX_SUCCESS == status)
     {
-    	do_del_tcs(ptcs);
-        return status;
+        return do_add_thread(ms);
     }
 
     return status;
 }
 
-// do_uninit_enclave()
-//      Run the global uninitialized functions when the enclave is destroyed.
-// Parameters:
-//      [IN] tcs - used for running this task
-// Return Value:
-//     zero - success
-//     non-zero - fail
-//
 sgx_status_t do_uninit_enclave(void *tcs)
 {
-    sgx_spin_lock(&g_tcs_node_lock);
     tcs_node_t *tcs_node = g_tcs_node;
-    g_tcs_node = NULL;
-    sgx_spin_unlock(&g_tcs_node_lock);
 
+    sgx_spin_lock(&g_tcs_node_lock);
     while (tcs_node != NULL)
     {
         if (DEC_TCS_POINTER(tcs_node->tcs) == tcs)
@@ -401,13 +326,14 @@ sgx_status_t do_uninit_enclave(void *tcs)
         int rc = sgx_accept_forward(SI_FLAG_TRIM | SI_FLAG_MODIFIED, start, end);
         if(rc != 0)
         {
-            return SGX_ERROR_UNEXPECTED;
+            abort();
         }
 
         tcs_node_t *tmp = tcs_node;
         tcs_node = tcs_node->next;
         free(tmp);
     }
+    sgx_spin_unlock(&g_tcs_node_lock);
 
     sgx_spin_lock(&g_ife_lock);
     if (!g_is_first_ecall)
@@ -432,7 +358,10 @@ extern "C" sgx_status_t sgx_trts_mprotect(size_t start, size_t size, uint64_t pe
     if (!IS_PAGE_ALIGNED(start) || (size == 0) || !IS_PAGE_ALIGNED(size))
         return SGX_ERROR_INVALID_PARAMETER;
 
-    ret = change_permissions_ocall(start, size, perms);
+    // TODO: For our special case, which is restricting the page permission back
+    // to what is specified in ELF file, the ocall is not actually needed since
+    // we know the original page permission.
+    ret = change_permissions_ocall(start, size, perms|SI_FLAG_W, perms);
     if (ret != SGX_SUCCESS)
         return ret;
 
@@ -451,5 +380,13 @@ extern "C" sgx_status_t sgx_trts_mprotect(size_t start, size_t size, uint64_t pe
         }
     }
 
-    return SGX_SUCCESS;
+    if ((perms & SI_FLAG_W) == 0)
+    {
+        ret = change_permissions_ocall(start, size, perms, SI_FLAG_R|SI_FLAG_W|SI_FLAG_X);
+        if (ret != SGX_SUCCESS)
+            return ret;
+    }
+
+    return ret;
+
 }

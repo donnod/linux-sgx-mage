@@ -211,15 +211,10 @@ static int check_dynamic_range(void *addr, size_t page_count, size_t *offset, st
 
 int is_dynamic_thread(void *tcs)
 {
-    struct dynamic_flags_attributes fa;
-
-    if ((tcs != NULL) && (check_dynamic_range(tcs, 1, NULL, &fa) == 0) &&
-            (fa.si_flags == SI_FLAGS_TCS))
-    {
+    if ((tcs != NULL) && (check_dynamic_range(tcs, 1, NULL, NULL) == 0))
         return true;
-    }
-
-    return false;
+    else
+        return false;
 }
 
 uint32_t get_dynamic_stack_max_page()
@@ -358,16 +353,16 @@ int trim_EPC_pages(void *start_address, size_t page_count)
 #endif
 }
 
-// Create a thread dynamically.
-// It will add necessary pages and transform one of them into type TCS.
-sgx_status_t do_add_thread(void *ptcs)
+
+sgx_status_t do_add_thread(void *ms)
 {
 #ifdef SE_SIM
-    (void)ptcs;
+    (void)ms;
     return SGX_SUCCESS;
 #else
     int ret = SGX_ERROR_UNEXPECTED;
-    tcs_t *tcs = (tcs_t *)ptcs;
+    struct ms_tcs *ms1 = (struct ms_tcs*)ms;
+    tcs_t *tcs = (tcs_t *)ms1->ptcs;
     tcs_t *tcs_template = NULL;
     size_t offset = 0;
     size_t enclave_base = (size_t)get_enclave_base();

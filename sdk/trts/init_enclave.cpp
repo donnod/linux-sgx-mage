@@ -54,8 +54,11 @@ uint64_t g_cpu_feature_indicator = 0;
 int EDMM_supported = 0;
 sdk_version_t g_sdk_version = SDK_VERSION_1_5;
 
-const volatile global_data_t g_global_data = {1, 2, 3, 4,  
-   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0}, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 0, {{{0, 0, 0, 0, 0, 0, 0}}}};
+const volatile global_data_t g_global_data = {1, 2, 3, 4, 5,  
+#ifdef SE_32
+   0, 
+#endif
+   {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, {0, 0, 0, 0, 0, 0},0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 0, 0, {{{0, 0, 0, 0, 0, 0, 0}}}};
 uint32_t g_enclave_state = ENCLAVE_INIT_NOT_STARTED;
 
 extern "C" {
@@ -96,15 +99,15 @@ extern "C" int init_enclave(void *enclave_base, void *ms)
         return -1;
     }
 
-    const system_features_t sys_features = *info;
-    g_sdk_version = sys_features.version;
+    const uint64_t cpu_features = info->cpu_features;
+    g_sdk_version = info->version;
     if (g_sdk_version == SDK_VERSION_1_5)
     {
         EDMM_supported = 0;
     }
     else if (g_sdk_version == SDK_VERSION_2_0)
     {
-        EDMM_supported = feature_supported((const uint64_t *)sys_features.system_feature_set, 0);
+        EDMM_supported = feature_supported(info->system_feature_set, 0);
     }
     else
     {
@@ -118,7 +121,7 @@ extern "C" int init_enclave(void *enclave_base, void *ms)
     uint64_t xfrm = get_xfeature_state();
 
     // optimized libs
-    if(0 != init_optimized_libs((const uint64_t)sys_features.cpu_features, xfrm))
+    if(0 != init_optimized_libs(cpu_features, xfrm))
     {
         return -1;
     }
@@ -132,10 +135,7 @@ extern "C" int init_enclave(void *enclave_base, void *ms)
     return 0;
 }
 
-#ifndef SE_SIM
 int accept_post_remove(const volatile layout_t *layout_start, const volatile layout_t *layout_end, size_t offset);
-#endif
-
 sgx_status_t do_init_enclave(void *ms)
 {
     void *enclave_base = get_enclave_base();

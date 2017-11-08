@@ -78,6 +78,11 @@ int * get_errno_addr(void)
     return reinterpret_cast<int *>(&thread_data->last_error);
 }
 
+uint32_t get_debug_flag(void)
+{
+    return g_global_data.debug_flag;
+}
+
 //tRTS will receive a pointer to an array of uint64_t which indicates the
 //features of the running system. This function can be used to query whether
 //a certain feature (such as EDMM) is supported.
@@ -93,9 +98,9 @@ int * get_errno_addr(void)
 //have feature shift values 0 ~ 62, while features listed in array[1], have feature
 //shift values 64 ~ 126.
 
-int feature_supported(const uint64_t *feature_set, uint32_t feature_shift)
+int feature_supported(uint64_t *feature_set, uint32_t feature_shift)
 {
-    const uint64_t *f_set = feature_set;
+    uint64_t *f_set = feature_set;
     uint32_t bit_position = 0, i = 0;
 
     if (!f_set)

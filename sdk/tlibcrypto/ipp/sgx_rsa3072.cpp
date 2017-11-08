@@ -33,12 +33,12 @@
 #include "sgx_ecc256_common.h"
 
 
-sgx_status_t sgx_rsa3072_sign(const uint8_t * p_data,
-    uint32_t data_size,
-    const sgx_rsa3072_key_t * p_key,
+sgx_status_t sgx_rsa3072_sign(const uint8_t * p_data, 
+    uint32_t data_size, 
+    const sgx_rsa3072_private_key_t * p_private, 
     sgx_rsa3072_signature_t * p_signature)
 {
-    if ((p_data == NULL) || (data_size < 1) || (p_key == NULL) ||
+    if ((p_data == NULL) || (data_size < 1) || (p_private == NULL) ||
         (p_signature == NULL) )
     {
         return SGX_ERROR_INVALID_PARAMETER;
@@ -50,15 +50,15 @@ sgx_status_t sgx_rsa3072_sign(const uint8_t * p_data,
     Ipp8u *temp_buff = NULL;
 
     IppsBigNumState* p_prikey_mod_bn = NULL;
-    IppsBigNumState* p_prikey_d_bn = NULL;
+    IppsBigNumState* p_prikey_exp_bn = NULL;
 
     do
     {
-        // Initializa IPP BN from the private key
-        ipp_ret = sgx_ipp_newBN((const Ipp32u *)p_key->mod, sizeof(p_key->mod), &p_prikey_mod_bn);
+        // Initializa IPP BN from the private key 
+        ipp_ret = sgx_ipp_newBN((const Ipp32u *)p_private->mod, sizeof(p_private->mod), &p_prikey_mod_bn);
         ERROR_BREAK(ipp_ret);
 
-        ipp_ret = sgx_ipp_newBN((const Ipp32u *)p_key->d, sizeof(p_key->d), &p_prikey_d_bn);
+        ipp_ret = sgx_ipp_newBN((const Ipp32u *)p_private->exp, sizeof(p_private->exp), &p_prikey_exp_bn);
         ERROR_BREAK(ipp_ret);
 
         // allocate private key context
@@ -79,10 +79,10 @@ sgx_status_t sgx_rsa3072_sign(const uint8_t * p_data,
             p_rsa_privatekey_ctx, private_key_ctx_size);
         ERROR_BREAK(ipp_ret);
 
-        ipp_ret = ippsRSA_SetPrivateKeyType1(p_prikey_mod_bn, p_prikey_d_bn, p_rsa_privatekey_ctx);
+        ipp_ret = ippsRSA_SetPrivateKeyType1(p_prikey_mod_bn, p_prikey_exp_bn, p_rsa_privatekey_ctx);
         ERROR_BREAK(ipp_ret);
 
-        // allocate temp buffer for RSA calculation
+        // allocate temp buffer for RSA calculation 
         int private_key_buffer_size = 0;
 
         ipp_ret = ippsRSA_GetBufferSizePrivateKey(&private_key_buffer_size, p_rsa_privatekey_ctx);
@@ -99,8 +99,8 @@ sgx_status_t sgx_rsa3072_sign(const uint8_t * p_data,
 
     } while (0);
 
-    sgx_ipp_secure_free_BN(p_prikey_mod_bn, sizeof(p_key->mod));
-    sgx_ipp_secure_free_BN(p_prikey_d_bn, sizeof(p_key->d));
+    sgx_ipp_secure_free_BN(p_prikey_mod_bn, sizeof(p_private->mod));
+    sgx_ipp_secure_free_BN(p_prikey_exp_bn, sizeof(p_private->exp));
     SAFE_FREE(p_rsa_privatekey_ctx);
     SAFE_FREE(temp_buff);
 
@@ -144,7 +144,7 @@ sgx_status_t sgx_rsa3072_verify(const uint8_t *p_data,
 
     do
     {
-        // Initializa IPP BN from the public key
+        // Initializa IPP BN from the public key 
         ipp_ret = sgx_ipp_newBN((const Ipp32u *)p_public->mod, sizeof(p_public->mod), &p_pubkey_mod_bn);
         ERROR_BREAK(ipp_ret);
 
@@ -172,7 +172,7 @@ sgx_status_t sgx_rsa3072_verify(const uint8_t *p_data,
         ipp_ret = ippsRSA_SetPublicKey(p_pubkey_mod_bn, p_pubkey_exp_bn, p_rsa_publickey_ctx);
         ERROR_BREAK(ipp_ret);
 
-        // allocate temp buffer for RSA calculation
+        // allocate temp buffer for RSA calculation 
         int public_key_buffer_size = 0;
 
         ipp_ret = ippsRSA_GetBufferSizePublicKey(&public_key_buffer_size, p_rsa_publickey_ctx);
@@ -184,7 +184,7 @@ sgx_status_t sgx_rsa3072_verify(const uint8_t *p_data,
             break;
         }
 
-        // verify the signature
+        // verify the signature 
         ipp_ret = ippsRSAVerify_PKCS1v15(p_data, data_size, *p_signature, &result, p_rsa_publickey_ctx, hash_alg, temp_buff);
     } while (0);
 

@@ -37,6 +37,28 @@ CPPFLAGS := -I$(COMMON_DIR)/inc/internal \
 
 CXXFLAGS += $(ENCLAVE_CXXFLAGS) -Werror -fno-exceptions -fno-rtti
 
+ifneq ($(USE_OPT_LIBS), 0)
+CPPFLAGS += -I$(SGX_IPP_INC)
+OBJ =  ipp/init_tcrypto_lib.o ipp/sgx_aes_ctr.o ipp/sgx_aes_gcm.o ipp/sgx_cmac128.o ipp/sgx_ecc256.o ipp/sgx_ecc256_common.o ipp/sgx_ecc256_ecdsa.o ipp/sgx_sha256.o ipp/sgx_sha256_msg.o tcrypto_version.o ipp/sgx_rsa3072.o
+
+
+TARGET := libsgx_tcrypto.a
+
+$(TARGET): $(OBJ)
+		$(MKDIR) $(BUILD_DIR)/.libippcore
+		$(RM) $(BUILD_DIR)/.libippcore/*
+		cd $(BUILD_DIR)/.libippcore && $(AR) x $(IPP_LIBS_DIR)/libippcore.a
+		@$(CP) $(IPP_LIBS_DIR)/libippcp.a $@
+		$(AR) rsD $@ $(OBJ) $(BUILD_DIR)/.libippcore/*.o
+		$(RM) -r $(BUILD_DIR)/.libippcore
+
+$(OBJ): %.o: %.cpp
+		$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+
+ipp/sgx_ecc512.cpp:
+		@ln -s sgx_ecc256_internal.cpp ipp/sgx_ecc512.cpp
+else
+
 OBJ = init_tcrypto_lib.o sgx_aes_ctr.o sgx_aes_gcm.o sgx_cmac128.o sgx_ecc256.o sgx_ecc256_ecdsa.o sgx_sha256.o sgx_sha256_msg.o sgx_ecc256_internal.o sgx_rsa3072.o
 SHARED_OBJ = tcrypto_version.o
 
@@ -114,6 +136,9 @@ $(SRCDIR)/%.o: $(SRCDIR)/%.cpp
 
 $(SHARED_OBJ): %.o: %.cpp
 	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+
+
+endif
 
 $(BUILD_DIR):
 	@$(MKDIR) $@

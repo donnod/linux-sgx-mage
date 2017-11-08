@@ -50,7 +50,11 @@ typedef struct _global_data_t
     sys_word_t     enclave_size;
     sys_word_t     heap_offset;
     sys_word_t     heap_size;
-    sys_word_t     thread_policy;
+    uint32_t       thread_policy;
+    uint32_t       debug_flag;
+#ifdef SE_32
+    uint32_t       reserved0;
+#endif
     thread_data_t  td_template;
     uint8_t        tcs_template[TCS_TEMPLATE_SIZE];
     uint32_t       layout_entry_num;

@@ -108,6 +108,10 @@ extern "C" sgx_status_t sgx_init_crypto_lib(uint64_t cpu_feature_indicator)
         {
             ippCpuFeatures |= ippCPUID_PREFETCHW;
         }
+		if ((cpu_feature_indicator & CPU_FEATURE_PCLMULQDQ) == CPU_FEATURE_PCLMULQDQ)
+		{
+			ippCpuFeatures |= ippCPUID_CLMUL;
+		}
     }
     else
     {

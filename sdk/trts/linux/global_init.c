@@ -120,11 +120,9 @@ int atexit(void (*fun)(void))
 
 static void do_atexit_aux(void)
 {
-    sgx_spin_lock(&g_exit_function_lock);
     exit_function_t *exit_function = g_exit_function;
-    g_exit_function = NULL;
-    sgx_spin_unlock(&g_exit_function_lock);
 
+    sgx_spin_lock(&g_exit_function_lock);
     while (exit_function != NULL)
     {
         cxa_function_t cxa_func = DEC_CXA_FUNC_POINTER(exit_function->cxa.fun);
@@ -135,6 +133,7 @@ static void do_atexit_aux(void)
         exit_function = exit_function->next;
         free(tmp);
     }
+    sgx_spin_unlock(&g_exit_function_lock);
 }
 
 /* auxiliary routines */

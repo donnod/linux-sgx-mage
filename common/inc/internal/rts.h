@@ -54,6 +54,8 @@ typedef struct _ocall_context_t
     uintptr_t xbx;
     uintptr_t reserved[3];
     uintptr_t ocall_depth;
+    uintptr_t xsave_ptr;
+    uintptr_t frame;
     uintptr_t ocall_ret;
 } ocall_context_t;
 

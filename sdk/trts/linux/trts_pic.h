@@ -40,7 +40,7 @@
 #include "linux/linux-regs.h"
 #include "rts_cmd.h"
 
-#define SE_GUARD_PAGE_SIZE 0x10000
+#define SE_GUARD_PAGE_SIZE 0x1000
 
 #define ENCLAVE_INIT_NOT_STARTED    0
 #define ENCLAVE_INIT_IN_PROGRESS    1

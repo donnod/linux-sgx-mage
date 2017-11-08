@@ -462,59 +462,33 @@ int elf_get_uninit_array(const void* enclave_base,
     return 0;
 }
 
-static int has_text_relo(const ElfW(Ehdr) *ehdr, const ElfW(Phdr) *phdr, ElfW(Half) phnum)
-{
-    ElfW(Half) phi = 0;
-    int text_relo = 0;
-
-    for (; phi < phnum; phi++, phdr++)
-    {
-        if (phdr->p_type == PT_DYNAMIC)
-        {
-            size_t count;
-            size_t n_dyn = phdr->p_filesz/sizeof(ElfW(Dyn));
-            ElfW(Dyn) *dyn = GET_PTR(ElfW(Dyn), ehdr, phdr->p_paddr);
-
-            for (count = 0; count < n_dyn; count++, dyn++)
-            {
-                if (dyn->d_tag == DT_NULL)
-                    break;
-
-                if (dyn->d_tag == DT_TEXTREL)
-                {
-                    text_relo = 1;
-                    break;
-                }
-            }
-            break;
-        }
-    }
-    return text_relo;
-}
-
 sgx_status_t change_protection(void *enclave_base)
 {
     ElfW(Half) phnum = 0;
-    const ElfW(Ehdr) *ehdr = (const ElfW(Ehdr)*)enclave_base;
-    const ElfW(Phdr) *phdr = get_phdr(ehdr);
+    ElfW(Ehdr) *ehdr = (ElfW(Ehdr)*)enclave_base;
+    ElfW(Phdr) *phdr = get_phdr(ehdr);
     uint64_t perms;
     sgx_status_t status = SGX_ERROR_UNEXPECTED;
 
     if (phdr == NULL)
         return status;
 
-    int text_relocation = has_text_relo(ehdr, phdr, ehdr->e_phnum);
-
     for (; phnum < ehdr->e_phnum; phnum++, phdr++)
     {
-        if (text_relocation && (phdr->p_type == PT_LOAD) && ((phdr->p_flags & PF_W) == 0))
+
+        // TODO: we need only change back the permission of the page that: 
+        //       1. has relocations within it and 
+        //       2. the original permission is R or RX
+        if (phdr->p_type == PT_LOAD && ((phdr->p_flags & PF_W) == 0))
         {
             perms = 0;
             size_t start = (size_t)enclave_base + (phdr->p_vaddr & (size_t)(~(SE_PAGE_SIZE-1)));
             size_t end = (size_t)enclave_base + ((phdr->p_vaddr + phdr->p_memsz + SE_PAGE_SIZE - 1) & (size_t)(~(SE_PAGE_SIZE-1)));
-
+            
             if (phdr->p_flags & PF_R)
                 perms |= SI_FLAG_R;
+            if (phdr->p_flags & PF_W)
+                perms |= SI_FLAG_W;
             if (phdr->p_flags & PF_X)
                 perms |= SI_FLAG_X;
 
@@ -524,8 +498,9 @@ sgx_status_t change_protection(void *enclave_base)
 
         if (phdr->p_type == PT_GNU_RELRO)
         {
+            //need to apply memory protection after relocation is done
             size_t start = (size_t)enclave_base + (phdr->p_vaddr & (size_t)(~(SE_PAGE_SIZE-1)));
-            size_t end = (size_t)enclave_base + ((phdr->p_vaddr + phdr->p_memsz + SE_PAGE_SIZE - 1) & (size_t)(~(SE_PAGE_SIZE-1)));
+            size_t end = (size_t)enclave_base + ((phdr->p_vaddr + phdr->p_memsz) & (size_t)(~(SE_PAGE_SIZE-1)));
             if ((start != end) &&
                     (status = sgx_trts_mprotect(start, end - start, SI_FLAG_R)) != SGX_SUCCESS)
                 return status;

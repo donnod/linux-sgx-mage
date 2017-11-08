@@ -30,7 +30,7 @@
  */
 
 
- 
+
 /**
 * File: sgx_tcrypto.h
 * Description:
@@ -61,6 +61,12 @@ typedef struct _sgx_ec256_dh_shared_t
     uint8_t s[SGX_ECP256_KEY_SIZE];
 } sgx_ec256_dh_shared_t;
 
+typedef struct _sgx_ec256_dh_shared512_t
+{
+    uint8_t x[SGX_ECP256_KEY_SIZE];
+    uint8_t y[SGX_ECP256_KEY_SIZE];
+} sgx_ec256_dh_shared512_t;
+
 typedef struct _sgx_ec256_private_t
 {
     uint8_t r[SGX_ECP256_KEY_SIZE];
@@ -84,12 +90,11 @@ typedef struct _sgx_rsa3072_public_key_t
     uint8_t exp[SGX_RSA3072_PUB_EXP_SIZE];
 } sgx_rsa3072_public_key_t;
 
-typedef struct _sgx_rsa3072_key_t
+typedef struct _sgx_rsa3072_private_key_t
 {
     uint8_t mod[SGX_RSA3072_KEY_SIZE];
-    uint8_t d[SGX_RSA3072_PRI_EXP_SIZE];
-    uint8_t e[SGX_RSA3072_PUB_EXP_SIZE];
-} sgx_rsa3072_key_t;
+    uint8_t exp[SGX_RSA3072_PRI_EXP_SIZE];
+} sgx_rsa3072_private_key_t;
 
 typedef uint8_t sgx_rsa3072_signature_t[SGX_RSA3072_KEY_SIZE];
 
@@ -543,8 +548,20 @@ extern "C" {
                                                     sgx_ec256_dh_shared_t *p_shared_key,
                                                     sgx_ecc_state_handle_t ecc_handle);
 
-   
-    /** Computes signature for data based on private key.
+   /* Computes 512-bit DH shared key based on private B key (local) and remote public Ga Key
+    * Parameters:
+    *   Return: sgx_status_t - SGX_SUCCESS or failure as defined in sgx_error.h
+    *   Inputs: sgx_ecc_state_handle_t ecc_handle - Handle to the ECC crypto system
+    *           sgx_ec256_private_t *p_private_b - Pointer to the local private key
+    *           sgx_ec256_public_t *p_public_ga - Pointer to the remote public key
+    *   Output: sgx_ec256_dh_shared512_t *p_shared_key - Pointer to the 512-bit shared DH key
+    */
+    sgx_status_t SGXAPI sgx_ecc256_compute_shared_dhkey512(sgx_ec256_private_t *p_private_b,
+                                                    sgx_ec256_public_t *p_public_ga,
+                                                    sgx_ec256_dh_shared512_t *p_shared_key,
+                                                    sgx_ecc_state_handle_t ecc_handle);
+
+   /** Computes signature for data based on private key.
     *
     * A message digest is a fixed size number derived from the original message with
     * an applied hash function over the binary code of the message. (SHA256 in this case)
@@ -622,13 +639,12 @@ extern "C" {
     *   Return: sgx_status_t  - SGX_SUCCESS or failure as defined in sgx_error.h
     *   Inputs: uint8_t *p_data - Pointer to the data to be signed
     *           uint32_t data_size - Size of the data to be signed
-    *           sgx_rsa3072_key_t *p_key - Pointer to the RSA key. 
-    *				Note: In IPP based version p_key->e is unused, hence it can be NULL.
+    *           sgx_rsa3072_private_key_t *p_private - Pointer to the private key
     *   Output: sgx_rsa3072_signature_t *p_signature - Pointer to the signature output
     */
     sgx_status_t sgx_rsa3072_sign(const uint8_t *p_data,
         uint32_t data_size,
-        const sgx_rsa3072_key_t *p_key,
+        const sgx_rsa3072_private_key_t *p_private,
         sgx_rsa3072_signature_t *p_signature);
 
     /** Verifies the signature for the given data based on the RSA 3072 public key.

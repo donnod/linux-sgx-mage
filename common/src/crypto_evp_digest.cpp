@@ -37,7 +37,7 @@
 
 sgx_status_t sgx_EVP_Digest(const EVP_MD *type, const uint8_t *p_src, unsigned int src_len, uint8_t *digest, unsigned int *digest_len)
 {
-    if(!type || !p_src || src_len == 0 || !digest || digest_len == 0)
+    if(!p_src || src_len == 0 || !digest || digest_len == 0)
         return SGX_ERROR_INVALID_PARAMETER;
 
     uint8_t tmp_digest[EVP_MAX_MD_SIZE];

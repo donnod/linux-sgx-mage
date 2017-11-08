@@ -469,6 +469,7 @@ DECLARE_LOCAL_FUNC do_egetkey
     xor  %xax, %xax
 .Legetkey_done:
     SE_EPILOG
+    ret
 
 
 /* 
@@ -484,6 +485,7 @@ DECLARE_LOCAL_FUNC do_ereport
     mov       $SE_EREPORT, %xax  /* EREPORT leaf */
     ENCLU
     SE_EPILOG
+    ret
     
 DECLARE_GLOBAL_FUNC do_eaccept
     SE_PROLOG

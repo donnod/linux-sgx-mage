@@ -324,7 +324,7 @@ ae_error_t SigmaCryptoLayer::MsgVerifyPch(Ipp8u* PubKeyPch, int PubKeyPchLen,
         //So we must use bigger buffer add 8 bytes to the length
         if(SignatureLen == sizeof(Epid11BasicSignature)){
             memcpy(&Epid11Sig, Signature, SignatureLen);
-            SignatureLen = static_cast<int>(SignatureLen + sizeof(Epid11Sig.rl_ver) + sizeof(Epid11Sig.n2));
+            SignatureLen = static_cast<int>(SignatureLen + (2 * sizeof(OctStr32)));
             SigPointer = &Epid11Sig;
         }
         else
