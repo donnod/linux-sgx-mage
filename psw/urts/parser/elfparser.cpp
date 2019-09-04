@@ -37,6 +37,7 @@
 #include <sys/mman.h>
 #include <vector>
 #include <tuple>
+#include "sgx_maise.h"
 
 namespace {
 /** the callback function to filter a section.
@@ -79,8 +80,8 @@ const ElfW(Shdr)* get_section(const ElfW(Ehdr) *elf_hdr,
 
     for (unsigned idx = 0; idx < elf_hdr->e_shnum; ++idx, ++shdr)
     {
-        SE_TRACE(SE_TRACE_DEBUG, "section [%u] %s: sh_addr = %x, sh_size = %x, sh_offset = %x, sh_name = %x m_start_addr = %lx\n",
-                 idx, shstrtab + shdr->sh_name, shdr->sh_addr, shdr->sh_size, shdr->sh_offset, shdr->sh_name, elf_hdr);
+        SE_TRACE(SE_TRACE_DEBUG, "section [%u] %s: sh_addr = %x, sh_size = %x, sh_offset = %x, sh_name = %x\n",
+                 idx, shstrtab + shdr->sh_name, shdr->sh_addr, shdr->sh_size, shdr->sh_offset, shdr->sh_name);
         if (f(shstrtab, shdr, user_data))
             return shdr;
     }
@@ -371,7 +372,6 @@ inline bool is_tls_segment(const ElfW(Phdr)* prg_hdr)
 
 bool get_meta_property(const uint8_t *start_addr, const ElfW(Ehdr) *elf_hdr, uint64_t &meta_offset, uint64_t &meta_block_size)
 {
-    SE_TRACE(SE_TRACE_DEBUG, "get_meta_property start_addr %lx\n", start_addr);
     const ElfW(Shdr)* shdr = get_section_by_name(elf_hdr, ".note.sgxmeta");
     if (shdr == NULL)
     {
@@ -508,9 +508,9 @@ Section* build_section(const uint8_t* raw_data, uint64_t size, uint64_t virtual_
 Section* build_maise_section(const uint8_t *start_addr, const ElfW(Ehdr) *elf_hdr)
 {
 
-    const ElfW(Shdr) *maise_shdr = get_section_by_name(elf_hdr, ".sgx_maise");
+    const ElfW(Shdr) *maise_shdr = get_section_by_name(elf_hdr, SGX_MAISE_SEC_NAME);
     if (NULL == maise_shdr) {
-        SE_TRACE(SE_TRACE_DEBUG, "NO .sgx_maise section %lx %lx\n", start_addr, elf_hdr);
+        SE_TRACE(SE_TRACE_DEBUG, "NO MAISE section found\n");
         return NULL;
     }
 
@@ -626,7 +626,6 @@ ElfParser::ElfParser (const uint8_t* start_addr, uint64_t len)
 sgx_status_t ElfParser::run_parser()
 {
     /* We only need to run the parser once. */
-    SE_TRACE(SE_TRACE_DEBUG, "*********run_parser*********\n");
     if (m_sections.size() != 0) return SGX_SUCCESS;
 
     const ElfW(Ehdr) *elf_hdr = (const ElfW(Ehdr) *)m_start_addr;
@@ -838,7 +837,7 @@ void ElfParser::get_reloc_entry_offset(const char* sec_name, std::vector<uint64_
 
     const ElfW(Ehdr) *ehdr = (const ElfW(Ehdr) *)m_start_addr;
     const ElfW(Shdr) *shdr = get_section_by_name(ehdr, sec_name);
-    SE_TRACE(SE_TRACE_DEBUG, "get_reloc_entry_offset m_start_addr %lx\n", m_start_addr);
+
     if (shdr == NULL)
         return;
 
@@ -1046,7 +1045,6 @@ bool ElfParser::is_enclave_encrypted() const
     // if enclave is encrypted, enclave must contain section .pcltbl
     const char* sec_name = ".pcltbl";
     const ElfW(Ehdr) *ehdr = (const ElfW(Ehdr) *)m_start_addr;
-    SE_TRACE(SE_TRACE_DEBUG, "is_enclave_encrypted m_start_addr %lx\n", m_start_addr);
     return (NULL != get_section_by_name(ehdr, sec_name));
 }
 
@@ -1055,6 +1053,5 @@ bool ElfParser::has_init_section() const
 {
     const char * sec_name = ".init";
     const ElfW(Ehdr) *elf_hdr = (const ElfW(Ehdr) *)m_start_addr;
-    SE_TRACE(SE_TRACE_DEBUG, "has_init_section m_start_addr %lx\n", m_start_addr);
     return (NULL != get_section_by_name(elf_hdr, sec_name)); 
 }

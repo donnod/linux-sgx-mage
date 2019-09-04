@@ -54,39 +54,6 @@
 #define DATA_BLOCK_SIZE 64
 #define EID             0x44444444
 
-void print_digest(EVP_MD_CTX *m_ctx, uint64_t src) {
-    // EVP_MD_CTX *tmp_ctx = EVP_MD_CTX_create();
-    // EVP_MD_CTX_copy(tmp_ctx, m_ctx);
-
-    // uint8_t temp_hash[SGX_HASH_SIZE];
-    // memset(temp_hash, 0, SGX_HASH_SIZE);
-    // unsigned int hash_len;
-
-    // EVP_DigestFinal_ex(tmp_ctx, temp_hash, &hash_len);
-
-    UNUSED(src);
-    // printf("%lx\n", src);
-
-    // for(uint i = 0; i < hash_len; i++) printf("0x%02x,", temp_hash[i]);
-    // printf("\n");
-
-    // for (uint i = 0; i < sizeof(EVP_MD); i++) {
-    //     printf("0x%02x,", reinterpret_cast<const uint8_t*>(m_ctx->digest)[i]);
-    // }
-    // printf("\n");
-    // for (uint i = 0; i < sizeof(EVP_MD_CTX); i++) {
-    //     printf("0x%02x,", reinterpret_cast<uint8_t*>(m_ctx)[i]);
-    // }
-    // printf("\n");
-    for(int i = 0; i < 32; i++) printf("0x%02x,", reinterpret_cast<uint8_t*>(m_ctx->md_data)[i]);
-    
-    printf("\n");
-    // printf(" %x %x %x\n", m_ctx->digest->md_size, m_ctx->digest->block_size, m_ctx->digest->ctx_size);
-
-    // if(tmp_ctx)
-    //     EVP_MD_CTX_destroy(tmp_ctx);
-}
-
 EnclaveCreatorST::EnclaveCreatorST()
 {
     m_hash_valid_flag = false;
@@ -141,12 +108,10 @@ int EnclaveCreatorST::create_enclave(secs_t *secs, sgx_enclave_id_t *enclave_id,
         se_trace(SE_TRACE_DEBUG, "ERROR - EVP_DigestUpdate: %s.\n", ERR_error_string(ERR_get_error(), NULL));
         return SGX_ERROR_UNEXPECTED;
     }
-    m_maise.size += 0x40;
+    m_maise.size += DATA_BLOCK_SIZE;
 
     *enclave_id = m_eid;
     *start_addr = secs->base;
-    // printf("ECREATE %lx\n", secs->size);
-    // print_digest(m_ctx, reinterpret_cast<uint64_t>(*start_addr));
     return SGX_SUCCESS;
 }
 
@@ -195,10 +160,8 @@ int EnclaveCreatorST::add_enclave_page(sgx_enclave_id_t enclave_id, void *src, u
         se_trace(SE_TRACE_DEBUG, "ERROR - EVP_digestUpdate: %s.\n", ERR_error_string(ERR_get_error(), NULL));
         return SGX_ERROR_UNEXPECTED;
     }
-    m_maise.size += 0x40;
+    m_maise.size += DATA_BLOCK_SIZE;
 
-    // printf("EADD %lx %x %lx\n", page_offset, attr, sinfo.flags);
-    // print_digest(m_ctx, reinterpret_cast<uint64_t>(src));
     /* If the page need to eextend, do eextend. */
     if((attr & ADD_EXTEND_PAGE) == ADD_EXTEND_PAGE)
     {
@@ -218,11 +181,8 @@ int EnclaveCreatorST::add_enclave_page(sgx_enclave_id_t enclave_id, void *src, u
                 se_trace(SE_TRACE_DEBUG, "ERROR - EVP_digestUpdate: %s.\n", ERR_error_string(ERR_get_error(), NULL));
                 return SGX_ERROR_UNEXPECTED;
             }
-    m_maise.size += 0x40;
+            m_maise.size += DATA_BLOCK_SIZE;
 
-
-            // printf("EEXTEND PAGEINFO %lx\n", page_offset);
-            // print_digest(m_ctx, reinterpret_cast<uint64_t>(src) + db_offset);
             for(int j = 0; j < EEXTEND_TIME; j++)
             {
                 memcpy_s(data_block, sizeof(data_block), pdata, DATA_BLOCK_SIZE);
@@ -231,10 +191,7 @@ int EnclaveCreatorST::add_enclave_page(sgx_enclave_id_t enclave_id, void *src, u
                     se_trace(SE_TRACE_DEBUG, "ERROR - EVP_digestUpdate: %s.\n", ERR_error_string(ERR_get_error(), NULL));
                     return SGX_ERROR_UNEXPECTED;
                 }
-    m_maise.size += 0x40;
-
-                // printf("EEXTEND CONTENT %lx\n", page_offset);
-                // print_digest(m_ctx, reinterpret_cast<uint64_t>(pdata));
+                m_maise.size += DATA_BLOCK_SIZE;
                 pdata += DATA_BLOCK_SIZE;
                 page_offset += DATA_BLOCK_SIZE;
             }
@@ -245,69 +202,24 @@ int EnclaveCreatorST::add_enclave_page(sgx_enclave_id_t enclave_id, void *src, u
     return SGX_SUCCESS;
 }
 
-bool in_ma_program_path()
-{
-    char prefix[24] = "/home/donnod/Desktop/ma";
-    char *path = reinterpret_cast<char*>(malloc(4096));
-    if (path != NULL) {
-        if (readlink("/proc/self/exe", path, 4096) == -1) {
-            free(path);
-            return false;
-        }
-    }
-    for(int i = 0; i <23; i++) if (prefix[i] != path[i]) return false;
-    free(path);
-    return true;
-}
-
 int EnclaveCreatorST::init_enclave(sgx_enclave_id_t enclave_id, enclave_css_t *enclave_css, SGXLaunchToken *lc, le_prd_css_file_t *prd_css_file)
 {
     assert(m_ctx != NULL);
     UNUSED(enclave_id), UNUSED(enclave_css), UNUSED(lc), UNUSED(prd_css_file);
 
-
-    printf("BEFORE EINIT\n");
     memcpy_s(m_maise.digest, SGX_HASH_SIZE, reinterpret_cast<uint8_t*>(m_ctx->md_data), SGX_HASH_SIZE);
-    // uint8_t cnts[16];
-    // memset(cnts, 0, 16);
-    // memcpy_s(cnts, 16, reinterpret_cast<uint8_t*>(&m_maise.size), sizeof(m_maise.size));
-    for (uint64_t i = 0; i < sizeof(m_maise); i++) printf("0x%02x,", reinterpret_cast<uint8_t*>(&m_maise)[i]);
-    // print_digest(m_ctx, 0);
-
-    if (in_ma_program_path()) {
-
-    uint8_t mrs[SE_PAGE_SIZE] = {
-        0x40,0x6b,0x3b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x8a,0x79,0xaa,0xb7,0xee,0xd3,0x21,0x5e,0x89,0xce,0xe6,0xb7,0x22,0x9c,0x23,0xa6,0xaa,0x30,0x73,0xbb,0x9e,0xef,0x8a,0xc3,0x42,0x36,0xd0,0xaa,0x27,0xeb,0xa5,0x68,
-        0x40,0x6b,0x3b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x6b,0xae,0x2e,0x7c,0x9e,0x96,0xf9,0xb7,0x53,0x0a,0x63,0x3b,0x66,0x76,0xde,0x56,0xfb,0xdd,0x05,0x33,0x28,0xc4,0x1b,0x3a,0x54,0x39,0x28,0x46,0x82,0x20,0xc9,0x4a,
-        0x40,0x6b,0x3b,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x14,0xeb,0xc7,0x43,0x34,0x39,0x3c,0xc0,0x83,0x5d,0xfb,0x23,0xb3,0x10,0xa2,0x20,0x9f,0x72,0xc5,0xd6,0x37,0x60,0x7b,0xd5,0x69,0xa7,0xcc,0x05,0xe2,0x6d,0x0e,0x5d,
-    };
-        // memset(mrs, 0, SE_PAGE_SIZE);
-        sec_info_t sinfo;
-        for(unsigned int i = 0; i< sizeof(sinfo.reserved)/sizeof(sinfo.reserved[0]); i++)
-        {
-            sinfo.reserved[i] = 0;
-        }
-        sinfo.flags = 0x201;
-        uint64_t offset = 0x0000000000fff000;
-        uint32_t attr = 3;
-        add_enclave_page(enclave_id, reinterpret_cast<void*>(mrs), offset, sinfo, attr);
-    }
-
+    
     uint8_t temp_hash[SGX_HASH_SIZE];
     memset(temp_hash, 0, SGX_HASH_SIZE);
     unsigned int hash_len;
 
-    // printf("BEFORE FINAL\n");
-    // print_digest(m_ctx, 0);
     /* Complete computation of the SHA256 digest and store the result into the hash. */
     if(EVP_DigestFinal_ex(m_ctx, temp_hash, &hash_len) != 1)
     {
         se_trace(SE_TRACE_DEBUG, "ERROR - EVP_digestFinal_ex: %s.\n", ERR_error_string(ERR_get_error(), NULL));
         return SGX_ERROR_UNEXPECTED;
     }
-    printf("FINAL DIGEST\n");
-    for(uint i = 0; i < hash_len; i++) printf("%02x", temp_hash[i]);
-    printf("\n");
+
     for (int i = 0; i< SGX_HASH_SIZE; i++)
     {
         m_enclave_hash[i] = temp_hash[i];
@@ -379,7 +291,11 @@ int EnclaveCreatorST::get_enclave_info(uint8_t *hash, int size, uint64_t *quota,
         memcpy_s(hash, size, m_enclave_hash, SGX_HASH_SIZE);
     }
     *quota = m_quota;
-    if (maise_t != NULL) memcpy_s(maise_t, sizeof(m_maise), &m_maise, sizeof(m_maise));
+    if (maise_t == NULL) {
+        se_trace(SE_TRACE_DEBUG, "ERROR: something went wrong in the function get_enclave_hash().\n");
+    } else {
+        memcpy_s(maise_t, sizeof(m_maise), &m_maise, sizeof(m_maise));
+    }
     return SGX_SUCCESS;
 }
 

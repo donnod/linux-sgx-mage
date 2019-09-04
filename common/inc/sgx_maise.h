@@ -33,18 +33,13 @@
 #ifndef _SGX_MAISE_H_
 #define _SGX_MAISE_H_
 
-// #include "metadata.h"
-// #include "uncopyable.h"
-// #include "loader.h"
-// #include "binparser.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define SGX_MAISE_SEC_NAME ".sgx_maise"
-#define SGX_MAISE_SEC_SIZE 4096
-
+#define SGX_MAISE_SEC_SIZE 8192
+// must be a multiple of 4096 (page size)
 
 typedef struct _sgx_maise_entry_t
 {
@@ -58,42 +53,6 @@ typedef struct _sgx_maise_t
     uint64_t size;
     sgx_maise_entry_t entries[];
 } sgx_maise_t;
-
-// class CMaise:
-// {
-// public:
-//     CMaise(metadata_t *metadata, BinParser *parser);
-//     ~CMaise();
-//     bool build_metadata(const xml_parameter_t *parameter);
-
-//     bool get_time(uint32_t *date);
-//     bool modify_metadata(const xml_parameter_t *parameter);
-//     bool check_xml_parameter(const xml_parameter_t *parameter);
-//     bool fill_enclave_css(const xml_parameter_t *parameter);
-//     void *alloc_buffer_from_metadata(uint32_t size);
-//     bool get_xsave_size(uint64_t xfrm, uint32_t *xsave_size);
-//     bool build_layout_table();
-//     bool build_patch_table();
-//     bool update_layout_entries();
-//     bool build_layout_entries();
-//     bool build_patch_entries(std::vector<patch_entry_t> &patches);
-
-//     layout_entry_t *get_entry_by_id(uint16_t id, bool do_assert);
-//     bool build_tcs_template(tcs_t *tcs);
-//     bool build_gd_template(uint8_t *data, uint32_t *data_size);
-
-//     uint64_t calculate_sections_size();
-//     uint64_t calculate_enclave_size(uint64_t size);
-//     void* get_rawdata_by_rva(uint64_t rva);
-// private:
-//     metadata_t *m_metadata;
-//     BinParser *m_parser;
-//     create_param_t m_create_param;
-//     std::vector <layout_t> m_layouts;
-//     uint64_t m_rva;
-//     uint32_t m_gd_size;
-//     uint8_t *m_gd_template;
-// };
 
 #ifdef __cplusplus
 }

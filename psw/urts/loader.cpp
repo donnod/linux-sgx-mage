@@ -629,7 +629,7 @@ int CLoader::build_image(SGXLaunchToken * const lc, sgx_attributes_t * const sec
     // build maise section
     if(SGX_SUCCESS != (ret = build_maise_pages()))
     {
-        SE_TRACE(SE_TRACE_WARNING, "build sections failed\n");
+        SE_TRACE(SE_TRACE_WARNING, "build maise sections failed\n");
         goto fail;
     }
 
