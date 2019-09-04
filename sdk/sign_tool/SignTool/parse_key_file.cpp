@@ -86,7 +86,7 @@ bool parse_key_file(int mode, const char *key_path, RSA **prsa, int *pkey_type)
     int key_type = UNIDENTIFIABLE_KEY;
     RSA *rsa = NULL;
 
-    if(mode == SIGN)
+    if(mode == SIGN || mode == SIGNMAISE || mode == GENMAISE)
     {
         rsa = PEM_read_RSAPrivateKey(fp, NULL, NULL, NULL);
         fclose(fp);

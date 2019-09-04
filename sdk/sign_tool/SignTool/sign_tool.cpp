@@ -64,6 +64,7 @@
 #include "parserfactory.h"
 #include "elf_helper.h"
 #include "crypto_wrapper.h"
+#include "sgx_maise.h"
 
 #include <unistd.h>
 
@@ -94,7 +95,9 @@ typedef enum _file_path_t
     SIG,
     UNSIGNED,
     DUMPFILE,
-    CSSFILE
+    CSSFILE,
+    MAISEIN,
+    MAISEOUT
 } file_path_t;
 
 
@@ -142,7 +145,7 @@ static bool get_enclave_info(BinParser *parser, bin_fmt_t *bf, uint64_t * meta_o
 // measure_enclave():
 //    1. Get the enclave hash by loading enclave
 //    2. Get the enclave info - metadata offset and enclave file format
-static bool measure_enclave(uint8_t *hash, const char *dllpath, const xml_parameter_t *parameter, uint32_t ignore_error_bits, metadata_t *metadata, uint64_t *meta_offset)
+static bool measure_enclave(uint8_t *hash, const char *dllpath, const xml_parameter_t *parameter, uint32_t ignore_error_bits, metadata_t *metadata, uint64_t *meta_offset, uint64_t &maise_offset, uint64_t &maise_size, sgx_maise_entry_t * maise_t = NULL, bool for_sign = false)
 {
     assert(hash && dllpath && metadata && meta_offset);
     bool res = false;
@@ -175,6 +178,12 @@ static bool measure_enclave(uint8_t *hash, const char *dllpath, const xml_parame
         close_handle(fh);
         return false;
     }
+    const Section* maise_section = parser->get_maise_section();
+    if (maise_section != NULL) {
+        maise_offset = maise_section->get_rva();
+        maise_size = maise_section->virtual_size();
+    }
+    parser->set_for_sign(for_sign);
     if(parser->has_init_section() && IGNORE_INIT_SEC_ERROR(ignore_error_bits) == false)
     {
         se_trace(SE_TRACE_ERROR, INIT_SEC_ERROR);
@@ -231,7 +240,7 @@ static bool measure_enclave(uint8_t *hash, const char *dllpath, const xml_parame
         res = false;
         break;
     case SGX_SUCCESS:
-        ret = dynamic_cast<EnclaveCreatorST*>(get_enclave_creator())->get_enclave_info(hash, SGX_HASH_SIZE, &quota);
+        ret = dynamic_cast<EnclaveCreatorST*>(get_enclave_creator())->get_enclave_info(hash, SGX_HASH_SIZE, &quota, maise_t);
         if(ret != SGX_SUCCESS)
         {
             res = false;
@@ -584,7 +593,9 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-sig", NULL, PAR_INVALID},
         {"-unsigned", NULL, PAR_INVALID},
         {"-dumpfile", NULL, PAR_OPTIONAL},
-        {"-cssfile", NULL, PAR_OPTIONAL}};
+        {"-cssfile", NULL, PAR_OPTIONAL},
+        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maiseout", NULL, PAR_INVALID}};
     param_struct_t params_gendata[] = {
         {"-enclave", NULL, PAR_REQUIRED},
         {"-config", NULL, PAR_OPTIONAL},
@@ -593,7 +604,9 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-sig", NULL, PAR_INVALID},
         {"-unsigned", NULL, PAR_INVALID},
         {"-dumpfile", NULL, PAR_INVALID},
-        {"-cssfile", NULL, PAR_INVALID}};
+        {"-cssfile", NULL, PAR_INVALID},
+        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maiseout", NULL, PAR_INVALID}};
     param_struct_t params_catsig[] = {
         {"-enclave", NULL, PAR_REQUIRED},
         {"-config", NULL, PAR_OPTIONAL},
@@ -602,7 +615,9 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-sig", NULL, PAR_REQUIRED},
         {"-unsigned", NULL, PAR_REQUIRED},
         {"-dumpfile", NULL, PAR_OPTIONAL},
-        {"-cssfile", NULL, PAR_OPTIONAL}};
+        {"-cssfile", NULL, PAR_OPTIONAL},
+        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maiseout", NULL, PAR_INVALID}};
     param_struct_t params_dump[] = {
         {"-enclave", NULL, PAR_REQUIRED},
         {"-config", NULL, PAR_INVALID},
@@ -611,11 +626,35 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-sig", NULL, PAR_INVALID},
         {"-unsigned", NULL, PAR_INVALID},
         {"-dumpfile", NULL, PAR_REQUIRED},
-        {"-cssfile", NULL, PAR_OPTIONAL}};
+        {"-cssfile", NULL, PAR_OPTIONAL},
+        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maiseout", NULL, PAR_INVALID}};
+    param_struct_t params_genmaise[] = {
+        {"-enclave", NULL, PAR_REQUIRED},
+        {"-config", NULL, PAR_OPTIONAL},
+        {"-key", NULL, PAR_REQUIRED},
+        {"-out", NULL, PAR_REQUIRED},
+        {"-sig", NULL, PAR_INVALID},
+        {"-unsigned", NULL, PAR_INVALID},
+        {"-dumpfile", NULL, PAR_OPTIONAL},
+        {"-cssfile", NULL, PAR_OPTIONAL},
+        {"-maisein", NULL, PAR_INVALID},
+        {"-maiseout", NULL, PAR_REQUIRED}};
+    param_struct_t params_signmaise[] = {
+        {"-enclave", NULL, PAR_REQUIRED},
+        {"-config", NULL, PAR_OPTIONAL},
+        {"-key", NULL, PAR_REQUIRED},
+        {"-out", NULL, PAR_REQUIRED},
+        {"-sig", NULL, PAR_INVALID},
+        {"-unsigned", NULL, PAR_INVALID},
+        {"-dumpfile", NULL, PAR_OPTIONAL},
+        {"-cssfile", NULL, PAR_OPTIONAL},
+        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maiseout", NULL, PAR_INVALID}};
 
 
-    const char *mode_m[] ={"sign", "gendata","catsig", "dump"};
-    param_struct_t *params[] = {params_sign, params_gendata, params_catsig, params_dump};
+    const char *mode_m[] ={"sign", "gendata","catsig", "dump", "genmaise", "signmaise"};
+    param_struct_t *params[] = {params_sign, params_gendata, params_catsig, params_dump, params_genmaise, params_signmaise};
     unsigned int tempidx=0;
     for(; tempidx<sizeof(mode_m)/sizeof(mode_m[0]); tempidx++)
     {
@@ -735,6 +774,7 @@ static bool generate_output(int mode, int ktype, const uint8_t *enclave_hash, co
     switch(mode)
     {
     case SIGN:
+    case SIGNMAISE:
         {
             if(ktype != PRIVATE_KEY || !rsa)
             {
@@ -1266,7 +1306,7 @@ int main(int argc, char* argv[])
                                    {"ISVEXTPRODID_H", ISVEXTPRODID_MAX,  0,              0,                   0},
                                    {"ISVEXTPRODID_L", ISVEXTPRODID_MAX,  0,              0,                   0}};
 
-    const char *path[8] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+    const char *path[10] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
     uint8_t enclave_hash[SGX_HASH_SIZE] = {0};
     uint8_t metadata_raw[METADATA_SIZE];
     metadata_t *metadata = (metadata_t*)metadata_raw;
@@ -1274,6 +1314,8 @@ int main(int argc, char* argv[])
     int key_type = UNIDENTIFIABLE_KEY; //indicate the type of the input key file
     size_t parameter_count = sizeof(parameter)/sizeof(parameter[0]);
     uint64_t meta_offset = 0;
+    uint64_t maise_offset = 0;
+    uint64_t maise_size = 0;
     uint32_t ignore_error_bits = 0;
     RSA *rsa = NULL;
     memset(&metadata_raw, 0, sizeof(metadata_raw));
@@ -1328,19 +1370,81 @@ int main(int argc, char* argv[])
         goto clear_return;
     }
 
-    if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset) == false)
+    if(mode == GENMAISE) {
+        sgx_maise_entry_t maise_t;
+        if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, maise_offset, maise_size, &maise_t, true) == false)
+        {
+            se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+            goto clear_return;
+        }
+        maise_t.offset = maise_offset;
+        for (uint64_t i = 0; i < sizeof(maise_t); i++) printf("%02x", reinterpret_cast<uint8_t*>(&maise_t)[i]);
+        printf("\n Writing to file %s .\n", path[MAISEOUT]);
+        if(write_data_to_file(path[MAISEOUT], std::ios::binary| std::ios::out, reinterpret_cast<uint8_t*>(&maise_t), sizeof(maise_t), 0) == false)
+        {
+            se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+            goto clear_return;
+        }
+        se_trace(SE_TRACE_ERROR, SUCCESS_EXIT);
+        res = 0;
+        goto clear_return;
+    } else if (mode == SIGNMAISE) {
+        printf("\n reading size from file %s .\n", path[MAISEIN]);
+        uint64_t maisein_size = get_file_size(path[MAISEIN]);
+        uint64_t maisein_t_size = maisein_size + sizeof(sgx_maise_t);
+        if (maisein_size % sizeof(sgx_maise_entry_t) != 0 || maisein_t_size > SGX_MAISE_SEC_SIZE) {
+            se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+            goto clear_return;
+        }
+
+        printf("\n read size %lu from file %s .\n", maisein_size, path[MAISEIN]);
+        sgx_maise_t *maisein_t = (sgx_maise_t *)malloc(maisein_t_size);
+        if (maisein_t == NULL) {
+            se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+            goto clear_return;
+        }
+
+        printf("\n reading %lu from file %s .\n", maisein_t_size, path[MAISEIN]);
+        maisein_t->size = maisein_size / sizeof(sgx_maise_entry_t);
+        if(read_file_to_buf(path[MAISEIN], (uint8_t*)maisein_t->entries, maisein_size) == false)
+        {
+            se_trace(SE_TRACE_ERROR, READ_FILE_ERROR, path[UNSIGNED]);
+            delete [] maisein_t;
+            goto clear_return;
+        }
+        printf("\n read %lu entires %lu size from file %s .\n", maisein_t->size, maisein_t_size, path[MAISEIN]);
+        
+        if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, maise_offset, maise_size, NULL, true) == false)
+        {
+            se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+            goto clear_return;
+        }
+
+        if(write_data_to_file(path[OUTPUT], std::ios::in | std::ios::binary| std::ios::out, reinterpret_cast<uint8_t*>(maisein_t), maisein_t_size, maise_offset) == false)
+        {
+            se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+            goto clear_return;
+        }
+        for (uint64_t i = 0; i < maisein_t_size; i++) printf("%02x", reinterpret_cast<uint8_t*>(maisein_t)[i]);
+        printf("\n Writing to %lu %s .\n", maisein_t_size, path[MAISEOUT]);
+        
+    }
+
+    if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, maise_offset, maise_size) == false)
     {
         se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+        se_trace(SE_TRACE_ERROR, "measure_enclave\n");
         goto clear_return;
     }
     if((generate_output(mode, key_type, enclave_hash, rsa, metadata, path)) == false)
     {
         se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+        se_trace(SE_TRACE_ERROR, "generate_output\n");
         goto clear_return;
     }
 
     //to verify
-    if(mode == SIGN || mode == CATSIG)
+    if(mode == SIGN || mode == CATSIG || mode == SIGNMAISE)
     {
         if(verify_signature(rsa, &(metadata->enclave_css)) == false)
         {

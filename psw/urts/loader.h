@@ -77,6 +77,7 @@ private:
     int build_contexts(layout_t *layout_start, layout_t *layout_end, uint64_t delta);
     int build_partial_page(const uint64_t rva, const uint64_t size, const void *source, const sec_info_t &sinfo, const uint32_t attr);
     int build_pages(const uint64_t start_rva, const uint64_t size, const void *source, const sec_info_t &sinfo, const uint32_t attr);
+    int build_maise_pages();
     bool is_relocation_page(const uint64_t rva, std::vector<uint8_t> *bitmap);
 
     bool is_ae(const enclave_css_t *enclave_css);
