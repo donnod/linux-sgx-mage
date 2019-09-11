@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2019 Intel Corporation. All rights reserved.
+ * Copyright (C) 2011-2016 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,36 +30,20 @@
  */
 
 
-#ifndef _SGX_MAISE_H_
-#define _SGX_MAISE_H_
+#ifndef _ENCLAVE_H_
+#define _ENCLAVE_H_
 
-#ifdef __cplusplus
+#include <stdlib.h>
+#include <assert.h>
+
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
-#define SGX_MAISE_SEC_NAME ".sgx_maise"
-#define SGX_MAISE_SEC_SIZE 8192
-// must be a multiple of 4096 (page size)
+void printf(const char *fmt, ...);
 
-typedef struct _sgx_maise_entry_t
-{
-    uint64_t size;              // number of blocks updated
-    uint64_t offset;            // offset of sgx_maise section
-    uint8_t digest[32];         // sha-256 internal state
-} sgx_maise_entry_t;
-
-typedef struct _sgx_maise_t
-{
-    uint64_t size;
-    sgx_maise_entry_t entries[];
-} sgx_maise_t;
-
-uint64_t sgx_maise_size();
-
-sgx_status_t sgx_maise_gen_measurement(uint64_t maise_idx, sgx_measurement_t *mr);
-
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 
-#endif
+#endif /* !_ENCLAVE_H_ */

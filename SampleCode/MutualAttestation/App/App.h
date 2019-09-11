@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2019 Intel Corporation. All rights reserved.
+ * Copyright (C) 2011-2016 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,36 +30,37 @@
  */
 
 
-#ifndef _SGX_MAISE_H_
-#define _SGX_MAISE_H_
+#ifndef _APP_H_
+#define _APP_H_
 
-#ifdef __cplusplus
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+#include "sgx_error.h"       /* sgx_status_t */
+#include "sgx_eid.h"     /* sgx_enclave_id_t */
+
+#ifndef TRUE
+# define TRUE 1
+#endif
+
+#ifndef FALSE
+# define FALSE 0
+#endif
+
+# define TOKEN_FILENAME   "enclave.token"
+# define ENCLAVE_FILENAME "enclave.signed.so"
+
+extern sgx_enclave_id_t global_eid;    /* global enclave id */
+
+#if defined(__cplusplus)
 extern "C" {
 #endif
 
-#define SGX_MAISE_SEC_NAME ".sgx_maise"
-#define SGX_MAISE_SEC_SIZE 8192
-// must be a multiple of 4096 (page size)
 
-typedef struct _sgx_maise_entry_t
-{
-    uint64_t size;              // number of blocks updated
-    uint64_t offset;            // offset of sgx_maise section
-    uint8_t digest[32];         // sha-256 internal state
-} sgx_maise_entry_t;
-
-typedef struct _sgx_maise_t
-{
-    uint64_t size;
-    sgx_maise_entry_t entries[];
-} sgx_maise_t;
-
-uint64_t sgx_maise_size();
-
-sgx_status_t sgx_maise_gen_measurement(uint64_t maise_idx, sgx_measurement_t *mr);
-
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 
-#endif
+#endif /* !_APP_H_ */

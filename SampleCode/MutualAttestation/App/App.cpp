@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2019 Intel Corporation. All rights reserved.
+ * Copyright (C) 2011-2016 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,36 +30,68 @@
  */
 
 
-#ifndef _SGX_MAISE_H_
-#define _SGX_MAISE_H_
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
 
-#ifdef __cplusplus
-extern "C" {
+# include <unistd.h>
+# include <pwd.h>
+# define MAX_PATH FILENAME_MAX
+
+#include "sgx_urts.h"
+#include "App.h"
+#include "Enclave_u.h"
+
+#include <stdlib.h>
+#include <stdint.h>
+#ifdef _MSC_VER
+#include <intrin.h>
+#pragma optimize("gt",on)
+#else
+#include <x86intrin.h>
 #endif
 
-#define SGX_MAISE_SEC_NAME ".sgx_maise"
-#define SGX_MAISE_SEC_SIZE 8192
-// must be a multiple of 4096 (page size)
+#include <pthread.h>
+#include <sched.h>
+#include <sys/mman.h>
+#include <sched.h> 
+#include <fcntl.h>
+#include <assert.h>
+#include <time.h>
 
-typedef struct _sgx_maise_entry_t
+/* Global EID shared by multiple threads */
+sgx_enclave_id_t global_eid = 0;
+
+/* OCall functions */
+void ocall_print_string(const char *str)
 {
-    uint64_t size;              // number of blocks updated
-    uint64_t offset;            // offset of sgx_maise section
-    uint8_t digest[32];         // sha-256 internal state
-} sgx_maise_entry_t;
-
-typedef struct _sgx_maise_t
-{
-    uint64_t size;
-    sgx_maise_entry_t entries[];
-} sgx_maise_t;
-
-uint64_t sgx_maise_size();
-
-sgx_status_t sgx_maise_gen_measurement(uint64_t maise_idx, sgx_measurement_t *mr);
-
-#ifdef __cplusplus
+    /* Proxy/Bridge will check the length and null-terminate 
+     * the input string to prevent buffer overflow. 
+     */
+    printf("%s", str);
 }
-#endif
 
-#endif
+/* Application entry */
+int SGX_CDECL main(int argc, char *argv[])
+{
+    (void)(argc);
+    (void)(argv);
+
+    sgx_launch_token_t token = {0};
+    sgx_status_t ret = SGX_ERROR_UNEXPECTED;
+    int updated = 0;
+    ret = sgx_create_enclave(ENCLAVE_FILENAME, SGX_DEBUG_FLAG, &token, &updated, &global_eid, NULL);
+    if (ret != SGX_SUCCESS) {
+        return -1;
+    }
+    printf("create successfully\n");
+
+    uint32_t enclave_ret;
+    ecall_main(global_eid, &enclave_ret);
+    
+
+    sgx_destroy_enclave(global_eid);
+    
+    printf("Info: SampleEnclave successfully returned.\n");
+    return 0;
+}

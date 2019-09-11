@@ -6,6 +6,7 @@ DeliveryName	InstallName	FileCheckSum	FileFeature	FileOwner
 <deliverydir>/build/linux/gdb-sgx-plugin/sgx_emmt.py	<installdir>/package/lib64/gdb-sgx-plugin/sgx_emmt.py	0	main	STP
 <deliverydir>/build/linux/libsgx_ptrace.so	<installdir>/package/lib64/libsgx_ptrace.so	0	main	STP
 <deliverydir>/build/linux/libsgx_tcrypto.a	<installdir>/package/lib64/libsgx_tcrypto.a	0	main	STP
+<deliverydir>/build/linux/libsgx_maise.a	<installdir>/package/lib64/libsgx_maise.a	0	main	STP
 <deliverydir>/build/linux/libsgx_tkey_exchange.a	<installdir>/package/lib64/libsgx_tkey_exchange.a	0	main	STP
 <deliverydir>/build/linux/libsgx_trts.a	<installdir>/package/lib64/libsgx_trts.a	0	main	STP
 <deliverydir>/build/linux/libsgx_trts_sim.a	<installdir>/package/lib64/libsgx_trts_sim.a	0	main	STP

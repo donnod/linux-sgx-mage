@@ -594,7 +594,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-unsigned", NULL, PAR_INVALID},
         {"-dumpfile", NULL, PAR_OPTIONAL},
         {"-cssfile", NULL, PAR_OPTIONAL},
-        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maisein", NULL, PAR_INVALID},
         {"-maiseout", NULL, PAR_INVALID}};
     param_struct_t params_gendata[] = {
         {"-enclave", NULL, PAR_REQUIRED},
@@ -605,7 +605,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-unsigned", NULL, PAR_INVALID},
         {"-dumpfile", NULL, PAR_INVALID},
         {"-cssfile", NULL, PAR_INVALID},
-        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maisein", NULL, PAR_INVALID},
         {"-maiseout", NULL, PAR_INVALID}};
     param_struct_t params_catsig[] = {
         {"-enclave", NULL, PAR_REQUIRED},
@@ -616,7 +616,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-unsigned", NULL, PAR_REQUIRED},
         {"-dumpfile", NULL, PAR_OPTIONAL},
         {"-cssfile", NULL, PAR_OPTIONAL},
-        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maisein", NULL, PAR_INVALID},
         {"-maiseout", NULL, PAR_INVALID}};
     param_struct_t params_dump[] = {
         {"-enclave", NULL, PAR_REQUIRED},
@@ -627,7 +627,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-unsigned", NULL, PAR_INVALID},
         {"-dumpfile", NULL, PAR_REQUIRED},
         {"-cssfile", NULL, PAR_OPTIONAL},
-        {"-maisein", NULL, PAR_REQUIRED},
+        {"-maisein", NULL, PAR_INVALID},
         {"-maiseout", NULL, PAR_INVALID}};
     param_struct_t params_genmaise[] = {
         {"-enclave", NULL, PAR_REQUIRED},

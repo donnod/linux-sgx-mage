@@ -1,0 +1,93 @@
+/*
+ * Copyright (C) 2011-2016 Intel Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in
+ *     the documentation and/or other materials provided with the
+ *     distribution.
+ *   * Neither the name of Intel Corporation nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
+
+#include <stdarg.h>
+#include <stdio.h>      /* vsnprintf */
+
+#include "Enclave.h"
+#include "Enclave_t.h"  /* print_string */
+
+#include "sgx_utils.h"
+#include "sgx_trts.h"
+#include "sgx_tseal.h"
+#include "sgx_maise.h"
+
+/* 
+ * printf: 
+ *   Invokes OCALL to display the enclave buffer to the terminal.
+ */
+void printf(const char *fmt, ...)
+{
+    char buf[BUFSIZ] = {'\0'};
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, BUFSIZ, fmt, ap);
+    va_end(ap);
+    ocall_print_string(buf);
+}
+
+sgx_status_t print_measurement()
+{
+    uint32_t ret = 0;
+    sgx_target_info_t target_info = {};
+    sgx_report_t report;
+    sgx_report_data_t report_data = {{0}};
+    ret = sgx_create_report(&target_info, &report_data, &report);
+    if (ret != SGX_SUCCESS) printf("ERROR get report %x\n", ret);
+    else {
+        for(int i = 0; i < 32; i++) printf("%02x", report.body.mr_enclave.m[i]);
+        printf("\n");
+    }
+}
+
+uint32_t ecall_main()
+{
+    uint32_t ret = 0;
+
+    print_measurement();
+    
+    uint64_t maise_size = sgx_maise_size();
+    printf("maise has %lu entries.\n", maise_size);
+    sgx_measurement_t mr;
+    for (uint64_t i = 0; i < maise_size; i++) {
+        printf("MAISE %d:\n", i);
+        if (SGX_SUCCESS != sgx_maise_gen_measurement(i, &mr)) {
+            printf("failed to generate maise measurement\n");
+            continue;
+        }
+        for (uint64_t j = 0; j < sizeof(mr.m); j++)
+            printf("%02x", mr.m[j]);
+        printf("\n");
+    }
+
+    return ret;
+}
