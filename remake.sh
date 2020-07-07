@@ -1,6 +1,6 @@
-make DEBUG=1
-make sdk_install_pkg DEBUG=1
-make psw_install_pkg DEBUG=1
+make
+make sdk_install_pkg
+make psw_install_pkg
 cd linux/installer/bin/
 sudo ./sgx_linux_x64_sdk_2.6.100.51363.bin
 source /opt/intel/sgxsdk/environment

@@ -30,33 +30,33 @@
  */
 
 
-#ifndef _SGX_MAISE_H_
-#define _SGX_MAISE_H_
+#ifndef _SGX_MAGE_H_
+#define _SGX_MAGE_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define SGX_MAISE_SEC_NAME ".sgx_maise"
-#define SGX_MAISE_SEC_SIZE 8192
+#define SGX_MAGE_SEC_NAME ".sgx_mage"
+#define SGX_MAGE_SEC_SIZE 4096
 // must be a multiple of 4096 (page size)
 
-typedef struct _sgx_maise_entry_t
+typedef struct _sgx_mage_entry_t
 {
     uint64_t size;              // number of blocks updated
-    uint64_t offset;            // offset of sgx_maise section
+    uint64_t offset;            // offset of sgx_mage section
     uint8_t digest[32];         // sha-256 internal state
-} sgx_maise_entry_t;
+} sgx_mage_entry_t;
 
-typedef struct _sgx_maise_t
+typedef struct _sgx_mage_t
 {
     uint64_t size;
-    sgx_maise_entry_t entries[];
-} sgx_maise_t;
+    sgx_mage_entry_t entries[];
+} sgx_mage_t;
 
-uint64_t sgx_maise_size();
+uint64_t sgx_mage_size();
 
-sgx_status_t sgx_maise_gen_measurement(uint64_t maise_idx, sgx_measurement_t *mr);
+sgx_status_t sgx_mage_gen_measurement(uint64_t mage_idx, sgx_measurement_t *mr);
 
 #ifdef __cplusplus
 }

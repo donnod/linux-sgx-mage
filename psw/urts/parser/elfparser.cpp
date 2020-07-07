@@ -37,7 +37,7 @@
 #include <sys/mman.h>
 #include <vector>
 #include <tuple>
-#include "sgx_maise.h"
+#include "sgx_mage.h"
 
 namespace {
 /** the callback function to filter a section.
@@ -505,19 +505,19 @@ Section* build_section(const uint8_t* raw_data, uint64_t size, uint64_t virtual_
     return NULL;
 }
 
-Section* build_maise_section(const uint8_t *start_addr, const ElfW(Ehdr) *elf_hdr)
+Section* build_mage_section(const uint8_t *start_addr, const ElfW(Ehdr) *elf_hdr)
 {
 
-    const ElfW(Shdr) *maise_shdr = get_section_by_name(elf_hdr, SGX_MAISE_SEC_NAME);
-    if (NULL == maise_shdr) {
-        SE_TRACE(SE_TRACE_DEBUG, "NO MAISE section found\n");
+    const ElfW(Shdr) *mage_shdr = get_section_by_name(elf_hdr, SGX_MAGE_SEC_NAME);
+    if (NULL == mage_shdr) {
+        SE_TRACE(SE_TRACE_DEBUG, "NO MAGE section found\n");
         return NULL;
     }
 
     si_flags_t sf = SI_FLAG_REG | SI_FLAG_R;
     return new Section(
-        GET_PTR(uint8_t, start_addr, maise_shdr->sh_offset),
-        maise_shdr->sh_size, maise_shdr->sh_size, maise_shdr->sh_addr, sf
+        GET_PTR(uint8_t, start_addr, mage_shdr->sh_offset),
+        mage_shdr->sh_size, mage_shdr->sh_size, mage_shdr->sh_addr, sf
     );
 
 }
@@ -525,7 +525,7 @@ Section* build_maise_section(const uint8_t *start_addr, const ElfW(Ehdr) *elf_hd
 bool build_regular_sections(const uint8_t* start_addr,
                             std::vector<Section *>& sections,
                             const Section*& tls_sec,
-                            Section*& maise_sec,
+                            Section*& mage_sec,
                             uint64_t& metadata_offset,
                             uint64_t& metadata_block_size)
 {
@@ -539,7 +539,7 @@ bool build_regular_sections(const uint8_t* start_addr,
     if (get_meta_property(start_addr, elf_hdr, metadata_offset, metadata_block_size) == false)
         return false;
 
-    maise_sec = build_maise_section(start_addr, elf_hdr);
+    mage_sec = build_mage_section(start_addr, elf_hdr);
 
     for (unsigned idx = 0; idx < elf_hdr->e_phnum; ++idx, ++prg_hdr)
     {
@@ -618,7 +618,7 @@ const Section* get_max_rva_section(const std::vector<Section*> sections)
 
 ElfParser::ElfParser (const uint8_t* start_addr, uint64_t len)
     :m_start_addr(start_addr), m_len(len), m_bin_fmt(BF_UNKNOWN),
-     m_tls_section(NULL), m_maise_section(NULL), m_for_sign(false), m_metadata_offset(0), m_metadata_block_size(0)
+     m_tls_section(NULL), m_mage_section(NULL), m_for_sign(false), m_metadata_offset(0), m_metadata_block_size(0)
 {
     memset(&m_dyn_info, 0, sizeof(m_dyn_info));
 }
@@ -664,7 +664,7 @@ sgx_status_t ElfParser::run_parser()
         return SGX_ERROR_INVALID_ENCLAVE;
 
     /* build regular sections */
-    if (build_regular_sections(m_start_addr, m_sections, m_tls_section, m_maise_section, m_metadata_offset, m_metadata_block_size))
+    if (build_regular_sections(m_start_addr, m_sections, m_tls_section, m_mage_section, m_metadata_offset, m_metadata_block_size))
         return SGX_SUCCESS;
     else
         return SGX_ERROR_INVALID_ENCLAVE;
@@ -715,15 +715,15 @@ const Section* ElfParser::get_tls_section() const
     return m_tls_section;
 }
 
-const Section* ElfParser::get_maise_section() const
+const Section* ElfParser::get_mage_section() const
 {
-    return m_maise_section;
+    return m_mage_section;
 }
 
-const Section* ElfParser::get_maise_section_ex() const
+const Section* ElfParser::get_mage_section_ex() const
 {
     if (m_for_sign) return NULL;
-    return m_maise_section;
+    return m_mage_section;
 }
 
 void ElfParser::set_for_sign(bool for_sign)

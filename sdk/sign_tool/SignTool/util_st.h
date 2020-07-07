@@ -45,8 +45,8 @@
     "   catsig                  Generate the signed enclave with the input signature file, the\n"\
     "                           public key and the enclave signing material\n"\
     "   dump                    Dump metadata information for a signed enclave file\n"\
-    "   genmaise                Generate enclave material for mutual attestation\n"\
-    "   signmaise               Sign enclave with mutual attestation\n"\
+    "   genmage                 Generate enclave material for mutual attestation\n"\
+    "   signmage                Sign enclave with mutual attestation\n"\
     "Options:\n"\
     "   -enclave                Specify the enclave file to be signed or already signed\n"\
     "                           It is a required option for the four commands\n"\
@@ -62,8 +62,8 @@
     "   -dumpfile               Specify a file to dump metadata information (text format)\n" \
     "                           It is a required option for \"dump\"\n" \
     "   -cssfile                Specify a file to dump the enclave SIGSTRUCT information (binary format)\n" \
-    "   -maisein                Specify a file to include in mutual attestation\n" \
-    "   -maiseout               Specify a file to output the enclave's metadata for mutual attestation\n" \
+    "   -magein                 Specify a file to include in mutual attestation\n" \
+    "   -mageout                Specify a file to output the enclave's metadata for mutual attestation\n" \
     "   -ignore-rel-error       By default, sgx_sign provides an error for enclaves with\n" \
     "                           text relocations. You can ignore the error and continue signing\n" \
     "                           by providing this option. But it is recommended you eliminate the\n" \
@@ -161,8 +161,8 @@ typedef enum _command_mode_t
     GENDATA,
     CATSIG,
     DUMP,
-    GENMAISE,
-    SIGNMAISE
+    GENMAGE,
+    SIGNMAGE
 } command_mode_t;
 
 

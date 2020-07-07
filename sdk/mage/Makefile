@@ -39,15 +39,15 @@ CPPFLAGS := -I$(COMMON_DIR)/inc/internal \
             -I$(COMMON_DIR)/../sdk/trts  \
             -I$(LINUX_PSW_DIR)
 
-OBJ := sgx_maise.o
+OBJ := sgx_mage.o
 
-LIBMAISE := libsgx_maise.a
+LIBMAGE := libsgx_mage.a
 
 .PHONY:all
-all: $(LIBMAISE) | $(BUILD_DIR)
+all: $(LIBMAGE) | $(BUILD_DIR)
 	@$(CP) $^ $|
 
-$(LIBMAISE): $(OBJ)
+$(LIBMAGE): $(OBJ)
 	$(AR) rcs $@ $^
 
 $(OBJ): %.o: %.cpp

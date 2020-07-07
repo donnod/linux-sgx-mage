@@ -80,9 +80,9 @@ public:
     // Get the TLS section
     virtual const Section* get_tls_section() const = 0;
 
-    // Get the MAISE section
-    virtual const Section* get_maise_section() const = 0;
-    virtual const Section* get_maise_section_ex() const = 0;
+    // Get the MAGE section
+    virtual const Section* get_mage_section() const = 0;
+    virtual const Section* get_mage_section_ex() const = 0;
     virtual void set_for_sign(bool for_sign) = 0;
 
     virtual uint64_t get_symbol_rva(const char* name) const = 0;

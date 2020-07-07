@@ -293,11 +293,11 @@ int CLoader::build_pages(const uint64_t start_rva, const uint64_t size, const vo
 
     uint64_t skip_rva = 0;
     uint64_t skip_size = 0;
-    const Section* maise_section = m_parser.get_maise_section();
-    if (maise_section != NULL)
+    const Section* mage_section = m_parser.get_mage_section();
+    if (mage_section != NULL)
     {
-        skip_rva = maise_section->get_rva();
-        skip_size = maise_section->virtual_size();
+        skip_rva = mage_section->get_rva();
+        skip_size = mage_section->virtual_size();
     }
 
     while(offset < size)
@@ -317,18 +317,18 @@ int CLoader::build_pages(const uint64_t start_rva, const uint64_t size, const vo
     return SGX_SUCCESS;
 }
 
-int CLoader::build_maise_pages()
+int CLoader::build_mage_pages()
 {
     int ret = SGX_SUCCESS;
 
-    const Section* maise_section = m_parser.get_maise_section_ex();
-    if (maise_section == NULL) return ret;
+    const Section* mage_section = m_parser.get_mage_section_ex();
+    if (mage_section == NULL) return ret;
 
 
     uint64_t offset = 0;
-    uint64_t rva = maise_section->get_rva();
-    uint64_t size = maise_section->virtual_size();
-    const void *source = maise_section->raw_data();
+    uint64_t rva = mage_section->get_rva();
+    uint64_t size = mage_section->virtual_size();
+    const void *source = mage_section->raw_data();
     sec_info_t sinfo;
     for(unsigned int i = 0; i< sizeof(sinfo.reserved)/sizeof(sinfo.reserved[0]); i++)
     {
@@ -339,7 +339,7 @@ int CLoader::build_maise_pages()
 
     assert(IS_PAGE_ALIGNED(rva) && IS_PAGE_ALIGNED(size));
 
-    se_trace(SE_TRACE_DEBUG, "\n\nbuild_maise_pages: %lx %lx\n", rva, rva + size);
+    se_trace(SE_TRACE_DEBUG, "\n\nbuild_mage_pages: %lx %lx\n", rva, rva + size);
 
     while(offset < size)
     {
@@ -626,10 +626,10 @@ int CLoader::build_image(SGXLaunchToken * const lc, sgx_attributes_t * const sec
         goto fail;
     }
 
-    // build maise section
-    if(SGX_SUCCESS != (ret = build_maise_pages()))
+    // build mage section
+    if(SGX_SUCCESS != (ret = build_mage_pages()))
     {
-        SE_TRACE(SE_TRACE_WARNING, "build maise sections failed\n");
+        SE_TRACE(SE_TRACE_WARNING, "build mage sections failed\n");
         goto fail;
     }
 

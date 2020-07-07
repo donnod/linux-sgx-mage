@@ -39,7 +39,7 @@
 #include "sgx_utils.h"
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
-#include "sgx_maise.h"
+#include "sgx_mage.h"
 
 /* 
  * printf: 
@@ -75,13 +75,13 @@ uint32_t ecall_main()
 
     print_measurement();
     
-    uint64_t maise_size = sgx_maise_size();
-    printf("maise has %lu entries.\n", maise_size);
+    uint64_t mage_size = sgx_mage_size();
+    printf("mage has %lu entries.\n", mage_size);
     sgx_measurement_t mr;
-    for (uint64_t i = 0; i < maise_size; i++) {
-        printf("MAISE %d:\n", i);
-        if (SGX_SUCCESS != sgx_maise_gen_measurement(i, &mr)) {
-            printf("failed to generate maise measurement\n");
+    for (uint64_t i = 0; i < mage_size; i++) {
+        printf("MAGE %d:\n", i);
+        if (SGX_SUCCESS != sgx_mage_gen_measurement(i, &mr)) {
+            printf("failed to generate mage measurement\n");
             continue;
         }
         for (uint64_t j = 0; j < sizeof(mr.m); j++)

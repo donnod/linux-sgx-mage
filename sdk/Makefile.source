@@ -41,7 +41,7 @@
 #        - tprotected_fs: libsgx_tprotected_fs.a
 #        - tcmalloc:      libsgx_tcmalloc.a
 #        - sgx_pcl:       libsgx_pcl.a
-#        - sgx_maise:     libsgx_maise.a
+#        - sgx_mage:      libsgx_mage.a
 #  - Untrtusted libraries
 #        - ukey_exchange: libsgx_ukey_exchange.a
 #        - uprotected_fs: libsgx_uprotected_fs.a
@@ -63,7 +63,7 @@ LIBTCXX    := $(BUILD_DIR)/libsgx_tcxx.a
 LIBTSE     := $(BUILD_DIR)/libsgx_tservice.a
 
 .PHONY: components
-components: tstdc tcxx tservice trts tcrypto tkey_exchange ukey_exchange tprotected_fs uprotected_fs ptrace sample_crypto libcapable simulation signtool edger8r tcmalloc sgx_pcl sgx_encrypt sgx_maise switchless
+components: tstdc tcxx tservice trts tcrypto tkey_exchange ukey_exchange tprotected_fs uprotected_fs ptrace sample_crypto libcapable simulation signtool edger8r tcmalloc sgx_pcl sgx_encrypt sgx_mage switchless
 
 # ---------------------------------------------------
 #  tstdc
@@ -195,9 +195,9 @@ tprotected_fs: edger8r
 sgx_pcl:
 	$(MAKE) -C protected_code_loader
 
-.PHONY: sgx_maise
-sgx_maise:
-	$(MAKE) -C maise/
+.PHONY: sgx_mage
+sgx_mage:
+	$(MAKE) -C mage/
 # ---------------------------------------------------
 #  Untrusted libraries
 # ---------------------------------------------------
@@ -285,6 +285,6 @@ clean:
 	$(MAKE) -C protected_code_loader               clean
 	$(MAKE) -C encrypt_enclave                     clean
 	$(MAKE) -C switchless/                         clean
-	$(MAKE) -C maise/                              clean
+	$(MAKE) -C mage/                               clean
 	@$(RM) $(LIBTLIBC) $(LIBTCXX) $(LIBTSE)
 	@$(RM) $(BUILD_DIR)/libc++_Changes_SGX.txt

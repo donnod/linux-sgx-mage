@@ -1,7 +1,7 @@
 
 #include "string.h"
 #include "sgx_tcrypto.h"
-#include "sgx_maise.h"
+#include "sgx_mage.h"
 
 #define DATA_BLOCK_SIZE 64
 #define SIZE_NAMED_VALUE 8
@@ -11,27 +11,27 @@
 #define HANDLE_HASH_OFFSET 168
 #define SHA256_DIGEST_SIZE 32
 
-const uint8_t __attribute__((section(SGX_MAISE_SEC_NAME))) sgx_maise_sec_buf[SGX_MAISE_SEC_SIZE] __attribute__((aligned (SE_PAGE_SIZE))) = {};
+const uint8_t __attribute__((section(SGX_MAGE_SEC_NAME))) sgx_mage_sec_buf[SGX_MAGE_SEC_SIZE] __attribute__((aligned (SE_PAGE_SIZE))) = {};
 
-uint64_t sgx_maise_size()
+uint64_t sgx_mage_size()
 {
-    sgx_maise_t* maise_hdr = (sgx_maise_t*)sgx_maise_sec_buf;
-    if (maise_hdr->size * sizeof(sgx_maise_entry_t) + sizeof(sgx_maise_t) > SGX_MAISE_SEC_SIZE) {
+    sgx_mage_t* mage_hdr = (sgx_mage_t*)sgx_mage_sec_buf;
+    if (mage_hdr->size * sizeof(sgx_mage_entry_t) + sizeof(sgx_mage_t) > SGX_MAGE_SEC_SIZE) {
         return 0;
     }
-    return maise_hdr->size;
+    return mage_hdr->size;
 }
 
-sgx_status_t sgx_maise_gen_measurement(uint64_t maise_idx, sgx_measurement_t *mr)
+sgx_status_t sgx_mage_gen_measurement(uint64_t mage_idx, sgx_measurement_t *mr)
 {
     sgx_status_t ret = SGX_SUCCESS;
 
-    sgx_maise_t* maise_hdr = (sgx_maise_t*)sgx_maise_sec_buf;
-    if (maise_hdr->size * sizeof(sgx_maise_entry_t) + sizeof(sgx_maise_t) > SGX_MAISE_SEC_SIZE || maise_hdr->size <= maise_idx || mr == NULL) {
+    sgx_mage_t* mage_hdr = (sgx_mage_t*)sgx_mage_sec_buf;
+    if (mage_hdr->size * sizeof(sgx_mage_entry_t) + sizeof(sgx_mage_t) > SGX_MAGE_SEC_SIZE || mage_hdr->size <= mage_idx || mr == NULL) {
         return SGX_ERROR_UNEXPECTED;
     }
 
-    sgx_maise_entry_t *maise = &maise_hdr->entries[maise_idx];
+    sgx_mage_entry_t *mage = mage_hdr->entries + mage_idx * sizeof(sgx_mage_entry_t);
 
     sgx_sha_state_handle_t sha_handle = NULL;
     if(sgx_sha256_init(&sha_handle) != SGX_SUCCESS)
@@ -39,14 +39,14 @@ sgx_status_t sgx_maise_gen_measurement(uint64_t maise_idx, sgx_measurement_t *mr
         return SGX_ERROR_UNEXPECTED;
     }
 
-    memcpy(reinterpret_cast<uint8_t*>(sha_handle) + HANDLE_HASH_OFFSET, maise->digest, SHA256_DIGEST_SIZE);
-    memcpy(reinterpret_cast<uint8_t*>(sha_handle) + HANDLE_SIZE_OFFSET, &maise->size, sizeof(maise->size));
+    memcpy(reinterpret_cast<uint8_t*>(sha_handle) + HANDLE_HASH_OFFSET, mage->digest, SHA256_DIGEST_SIZE);
+    memcpy(reinterpret_cast<uint8_t*>(sha_handle) + HANDLE_SIZE_OFFSET, &mage->size, sizeof(mage->size));
 
-    uint64_t page_offset = maise->offset;
-    uint8_t* source = reinterpret_cast<uint8_t*>(reinterpret_cast<uint64_t>(sgx_maise_sec_buf));
-    uint8_t* maise_sec_end_addr = source + SGX_MAISE_SEC_SIZE;
+    uint64_t page_offset = mage->offset;
+    uint8_t* source = reinterpret_cast<uint8_t*>(reinterpret_cast<uint64_t>(sgx_mage_sec_buf));
+    uint8_t* mage_sec_end_addr = source + SGX_MAGE_SEC_SIZE;
 
-    while (source < maise_sec_end_addr) {
+    while (source < mage_sec_end_addr) {
         uint8_t eadd_val[SIZE_NAMED_VALUE] = "EADD\0\0\0";
         uint8_t sinfo[64] = {0x01, 0x02};
 

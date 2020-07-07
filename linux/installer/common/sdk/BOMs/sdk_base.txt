@@ -20,7 +20,7 @@ DeliveryName	InstallName	FileCheckSum	FileFeature	FileOwner
 <deliverydir>/common/inc/sgx_tae_service.edl	<installdir>/package/include/./sgx_tae_service.edl	0	main	STP
 <deliverydir>/common/inc/sgx_tae_service.h	<installdir>/package/include/./sgx_tae_service.h	0	main	STP
 <deliverydir>/common/inc/sgx_tcrypto.h	<installdir>/package/include/./sgx_tcrypto.h	0	main	STP
-<deliverydir>/common/inc/sgx_maise.h	<installdir>/package/include/./sgx_maise.h	0	main	STP
+<deliverydir>/common/inc/sgx_mage.h	<installdir>/package/include/./sgx_mage.h	0	main	STP
 <deliverydir>/common/inc/sgx_thread.h	<installdir>/package/include/./sgx_thread.h	0	main	STP
 <deliverydir>/common/inc/sgx_tkey_exchange.edl	<installdir>/package/include/./sgx_tkey_exchange.edl	0	main	STP
 <deliverydir>/common/inc/sgx_tkey_exchange.h	<installdir>/package/include/./sgx_tkey_exchange.h	0	main	STP
