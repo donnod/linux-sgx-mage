@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Intel Corporation. All rights reserved.
+ * Copyright (C) 2011-2019 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,40 +30,38 @@
  */
 
 
+// App.cpp : Defines the entry point for the console application.
 #include <stdio.h>
-#include <string.h>
-#include <assert.h>
-
-# include <unistd.h>
-# include <pwd.h>
-# define MAX_PATH FILENAME_MAX
-
+#include <map>
+#include "../Enclave1/Enclave1_u.h"
+#include "../Enclave2/Enclave2_u.h"
+#include "../Enclave3/Enclave3_u.h"
+#include "sgx_eid.h"
 #include "sgx_urts.h"
-#include "App.h"
-#include "Enclave_u.h"
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
-#include <stdlib.h>
-#include <stdint.h>
-#ifdef _MSC_VER
-#include <intrin.h>
-#pragma optimize("gt",on)
-#else
-#include <x86intrin.h>
-#endif
 
-#include <pthread.h>
-#include <sched.h>
-#include <sys/mman.h>
-#include <sched.h> 
-#include <fcntl.h>
-#include <assert.h>
-#include <time.h>
+#define UNUSED(val) (void)(val)
+#define TCHAR   char
+#define _TCHAR  char
+#define _T(str) str
+#define scanf_s scanf
+#define _tmain  main
 
-/* Global EID shared by multiple threads */
-sgx_enclave_id_t global_eid = 0;
+std::map<sgx_enclave_id_t, uint32_t>g_enclave_id_map;
+
+
+sgx_enclave_id_t e1_enclave_id = 0;
+sgx_enclave_id_t e2_enclave_id = 0;
+sgx_enclave_id_t e3_enclave_id = 0;
+
+#define ENCLAVE1_PATH "libenclave1.so"
+#define ENCLAVE2_PATH "libenclave2.so"
+#define ENCLAVE3_PATH "libenclave3.so"
 
 /* OCall functions */
-void ocall_print_string(const char *str)
+void e1_ocall_print_string(const char *str)
 {
     /* Proxy/Bridge will check the length and null-terminate 
      * the input string to prevent buffer overflow. 
@@ -71,27 +69,99 @@ void ocall_print_string(const char *str)
     printf("%s", str);
 }
 
-/* Application entry */
-int SGX_CDECL main(int argc, char *argv[])
+void e2_ocall_print_string(const char *str)
 {
-    (void)(argc);
-    (void)(argv);
+    /* Proxy/Bridge will check the length and null-terminate 
+     * the input string to prevent buffer overflow. 
+     */
+    printf("%s", str);
+}
 
-    sgx_launch_token_t token = {0};
+void e3_ocall_print_string(const char *str)
+{
+    /* Proxy/Bridge will check the length and null-terminate 
+     * the input string to prevent buffer overflow. 
+     */
+    printf("%s", str);
+}
+
+void waitForKeyPress()
+{
+    char ch;
+    int temp;
+    printf("\n\nHit a key....\n");
+    temp = scanf_s("%c", &ch);
+    (void) temp;
+}
+
+uint32_t load_enclaves()
+{
+    uint32_t enclave_temp_no;
     sgx_status_t ret = SGX_ERROR_UNEXPECTED;
-    int updated = 0;
-    ret = sgx_create_enclave(ENCLAVE_FILENAME, SGX_DEBUG_FLAG, &token, &updated, &global_eid, NULL);
+
+    enclave_temp_no = 0;
+
+    ret = sgx_create_enclave(ENCLAVE1_PATH, SGX_DEBUG_FLAG, NULL, NULL, &e1_enclave_id, NULL);
     if (ret != SGX_SUCCESS) {
-        return -1;
+                return ret;
     }
-    printf("create successfully\n");
+
+    enclave_temp_no++;
+    g_enclave_id_map.insert(std::pair<sgx_enclave_id_t, uint32_t>(e1_enclave_id, enclave_temp_no));
+
+    ret = sgx_create_enclave(ENCLAVE2_PATH, SGX_DEBUG_FLAG, NULL, NULL, &e2_enclave_id, NULL);
+    if (ret != SGX_SUCCESS) {
+                return ret;
+    }
+
+    enclave_temp_no++;
+    g_enclave_id_map.insert(std::pair<sgx_enclave_id_t, uint32_t>(e2_enclave_id, enclave_temp_no));
+
+    ret = sgx_create_enclave(ENCLAVE3_PATH, SGX_DEBUG_FLAG, NULL, NULL, &e3_enclave_id, NULL);
+    if (ret != SGX_SUCCESS) {
+                return ret;
+    }
+
+    enclave_temp_no++;
+    g_enclave_id_map.insert(std::pair<sgx_enclave_id_t, uint32_t>(e3_enclave_id, enclave_temp_no));
+
+
+
+    return SGX_SUCCESS;
+}
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+    uint32_t ret_status;
+    sgx_status_t status;
+
+    UNUSED(argc);
+    UNUSED(argv);
+
+    if(load_enclaves() != SGX_SUCCESS)
+    {
+        printf("\nLoad Enclave Failure");
+    }
 
     uint32_t enclave_ret;
-    ecall_main(global_eid, &enclave_ret);
-    
+    printf("\nAvailable Enclaves");
+    printf("\nEnclave1 - EnclaveID %" PRIx64, e1_enclave_id);
+    printf("\n");
+    Enclave1_e1_ecall_main(e1_enclave_id, &enclave_ret);
 
-    sgx_destroy_enclave(global_eid);
+    printf("\nEnclave2 - EnclaveID %" PRIx64, e2_enclave_id);
+    printf("\n");
+    Enclave2_e2_ecall_main(e2_enclave_id, &enclave_ret);
+
+    printf("\nEnclave3 - EnclaveID %" PRIx64, e3_enclave_id);
+    printf("\n");
+    Enclave3_e3_ecall_main(e3_enclave_id, &enclave_ret);
     
-    printf("Info: SampleEnclave successfully returned.\n");
+    sgx_destroy_enclave(e1_enclave_id);
+    sgx_destroy_enclave(e2_enclave_id);
+    sgx_destroy_enclave(e3_enclave_id);
+
+    waitForKeyPress();
+
     return 0;
 }

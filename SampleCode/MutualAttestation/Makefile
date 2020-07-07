@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011-2016 Intel Corporation. All rights reserved.
+# Copyright (C) 2011-2019 Intel Corporation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -43,12 +43,12 @@ else ifeq ($(findstring -m32, $(CXXFLAGS)), -m32)
 endif
 
 ifeq ($(SGX_ARCH), x86)
-	SGX_COMMON_CFLAGS := -m32
+	SGX_COMMON_FLAGS := -m32
 	SGX_LIBRARY_PATH := $(SGX_SDK)/lib
 	SGX_ENCLAVE_SIGNER := $(SGX_SDK)/bin/x86/sgx_sign
 	SGX_EDGER8R := $(SGX_SDK)/bin/x86/sgx_edger8r
 else
-	SGX_COMMON_CFLAGS := -m64
+	SGX_COMMON_FLAGS := -m64
 	SGX_LIBRARY_PATH := $(SGX_SDK)/lib64
 	SGX_ENCLAVE_SIGNER := $(SGX_SDK)/bin/x64/sgx_sign
 	SGX_EDGER8R := $(SGX_SDK)/bin/x64/sgx_edger8r
@@ -61,10 +61,17 @@ endif
 endif
 
 ifeq ($(SGX_DEBUG), 1)
-        SGX_COMMON_CFLAGS += -O0 -g
+	SGX_COMMON_FLAGS += -O0 -g
 else
-        SGX_COMMON_CFLAGS += -O0
+	SGX_COMMON_FLAGS += -O2
 endif
+
+SGX_COMMON_FLAGS += -Wall -Wextra -Winit-self -Wpointer-arith -Wreturn-type \
+                    -Waddress -Wsequence-point -Wformat-security \
+                    -Wmissing-include-dirs -Wfloat-equal -Wundef -Wshadow \
+                    -Wcast-align -Wcast-qual -Wconversion -Wredundant-decls
+SGX_COMMON_CFLAGS := $(SGX_COMMON_FLAGS) -Wjump-misses-init -Wstrict-prototypes -Wunsuffixed-float-constants
+SGX_COMMON_CXXFLAGS := $(SGX_COMMON_FLAGS) -Wnon-virtual-dtor -std=c++11
 
 ######## App Settings ########
 
@@ -74,25 +81,26 @@ else
 	Urts_Library_Name := sgx_urts
 endif
 
-App_Cpp_Files := App/App.cpp $(wildcard App/Edger8rSyntax/*.cpp) $(wildcard App/TrustedLibrary/*.cpp)
-App_Include_Paths := -IInclude -IApp -I$(SGX_SDK)/include
+App_Cpp_Files := $(wildcard App/*.cpp)
+App_Include_Paths := -I$(SGX_SDK)/include -I./Include
 
-App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths)
-
+App_C_Flags := -fPIC -Wno-attributes $(App_Include_Paths)
 # Three configuration modes - Debug, prerelease, release
 #   Debug - Macro DEBUG enabled.
 #   Prerelease - Macro NDEBUG and EDEBUG enabled.
 #   Release - Macro NDEBUG enabled.
 ifeq ($(SGX_DEBUG), 1)
-        App_C_Flags += -DDEBUG -UNDEBUG -UEDEBUG
+	App_C_Flags += -DDEBUG -UNDEBUG -UEDEBUG
 else ifeq ($(SGX_PRERELEASE), 1)
-        App_C_Flags += -DNDEBUG -DEDEBUG -UDEBUG
+	App_C_Flags += -DNDEBUG -DEDEBUG -UDEBUG
 else
-        App_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
+	App_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
 endif
 
-App_Cpp_Flags := $(App_C_Flags) -std=c++11
-App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread
+App_Cxx_Flags := $(App_C_Flags) $(SGX_COMMON_CXXFLAGS)
+App_C_Flags += $(SGX_COMMON_CFLAGS)
+
+App_Link_Flags := -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -L. -lpthread
 
 ifneq ($(SGX_MODE), HW)
 	App_Link_Flags += -lsgx_uae_service_sim
@@ -101,10 +109,13 @@ else
 endif
 
 App_Cpp_Objects := $(App_Cpp_Files:.cpp=.o)
-
 App_Name := app
 
 ######## Enclave Settings ########
+
+Enclave1_Version_Script := Enclave1/Enclave1.lds
+Enclave2_Version_Script := Enclave2/Enclave2.lds
+Enclave3_Version_Script := Enclave3/Enclave3.lds
 
 ifneq ($(SGX_MODE), HW)
 	Trts_Library_Name := sgx_trts_sim
@@ -115,11 +126,24 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := $(wildcard Enclave/*.cpp)
-Enclave_Include_Paths := -IInclude -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I$(SGX_SDK_SRC)/common/inc
+Enclave_Cpp_Files_1 := $(wildcard Enclave1/*.cpp)
+Enclave_Cpp_Files_2 := $(wildcard Enclave2/*.cpp)
+Enclave_Cpp_Files_3 := $(wildcard Enclave3/*.cpp)
+Enclave_Include_Paths := -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx -I./Include
 
-Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths) -fPIC
-Enclave_Cpp_Flags := $(Enclave_C_Flags) -std=c++03 -nostdinc++
+CC_BELOW_4_9 := $(shell expr "`$(CC) -dumpversion`" \< "4.9")
+ifeq ($(CC_BELOW_4_9), 1)
+	Enclave_C_Flags := -nostdinc -fvisibility=hidden -fpie -ffunction-sections -fdata-sections -fstack-protector
+else
+	Enclave_C_Flags := -nostdinc -fvisibility=hidden -fpie -ffunction-sections -fdata-sections -fstack-protector-strong
+endif
+
+Enclave_C_Flags += $(Enclave_Include_Paths)
+Enclave_Cxx_Flags := $(Enclave_C_Flags) $(SGX_COMMON_CXXFLAGS) -nostdinc++
+Enclave_C_Flasg += $(SGX_COMMON_CFLAGS)
+
+# Enable the security flags
+Enclave_Security_Link_Flags := -Wl,-z,relro,-z,now,-z,noexecstack
 
 # To generate a proper enclave, it is recommended to follow below guideline to link the trusted libraries:
 #    1. Link sgx_trts with the `--whole-archive' and `--no-whole-archive' options,
@@ -128,21 +152,24 @@ Enclave_Cpp_Flags := $(Enclave_C_Flags) -std=c++03 -nostdinc++
 #       Use `--start-group' and `--end-group' to link these libraries.
 # Do NOT move the libraries linked with `--start-group' and `--end-group' within `--whole-archive' and `--no-whole-archive' options.
 # Otherwise, you may get some undesirable errors.
-Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) \
+Common_Enclave_Link_Flags := $(Enclave_Security_Link_Flags) \
+    -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) \
 	-Wl,--whole-archive -l$(Trts_Library_Name) -Wl,--no-whole-archive \
-	-Wl,--start-group -lsgx_tstdc -lsgx_tcxx -lsgx_mage -l$(Crypto_Library_Name) -l$(Service_Library_Name) -Wl,--end-group \
+	-Wl,--start-group -lsgx_tstdc -lsgx_tcxx -lsgx_mage -l$(Crypto_Library_Name) -L. -l$(Service_Library_Name) -Wl,--end-group \
 	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined \
 	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic  \
-	-Wl,--defsym,__ImageBase=0 \
-	-Wl,--version-script=Enclave/Enclave.lds
+	-Wl,--defsym,__ImageBase=0 -Wl,--gc-sections
+Enclave1_Link_Flags := $(Common_Enclave_Link_Flags) -Wl,--version-script=$(Enclave1_Version_Script)
+Enclave2_Link_Flags := $(Common_Enclave_Link_Flags) -Wl,--version-script=$(Enclave2_Version_Script)
+Enclave3_Link_Flags := $(Common_Enclave_Link_Flags) -Wl,--version-script=$(Enclave3_Version_Script)
 
+Enclave_Cpp_Objects_1 := $(Enclave_Cpp_Files_1:.cpp=.o)
+Enclave_Cpp_Objects_2 := $(Enclave_Cpp_Files_2:.cpp=.o)
+Enclave_Cpp_Objects_3 := $(Enclave_Cpp_Files_3:.cpp=.o)
 
-Enclave_Cpp_Objects := $(Enclave_Cpp_Files:.cpp=.o)
-Enclave_C_Objects := $(Enclave_C_Files:.c=.o)
-
-Enclave_Name := enclave.so
-Signed_Enclave_Name := enclave.signed.so
-Enclave_Config_File := Enclave/Enclave.config.xml
+Enclave_Name_1 := libenclave1.so
+Enclave_Name_2 := libenclave2.so
+Enclave_Name_3 := libenclave3.so
 
 ifeq ($(SGX_MODE), HW)
 ifeq ($(SGX_DEBUG), 1)
@@ -162,19 +189,29 @@ else
 endif
 endif
 
+v2 = LAv2
+ifdef $(v2)
+	LAv2_MACRO = 1
+else
+	LAv2_MACRO = 0
+endif	
 
-.PHONY: all run
+.PHONY: all target
+all: .config_$(Build_Mode)_$(SGX_ARCH)_$(LAv2_MACRO)
+	@$(MAKE) target
 
 ifeq ($(Build_Mode), HW_RELEASE)
-all: $(App_Name) $(Enclave_Name)
-	@echo "The project has been built in release hardware mode."
-	@echo "Please sign the $(Enclave_Name) first with your signing key before you run the $(App_Name) to launch and access the enclave."
-	@echo "To sign the enclave use the command:"
-	@echo "   $(SGX_ENCLAVE_SIGNER) sign -key <your key> -enclave $(Enclave_Name) -out <$(Signed_Enclave_Name)> -config $(Enclave_Config_File)"
-	@echo "You can also sign the enclave using an external signing tool."
+target: Enclave1.so Enclave2.so Enclave3.so $(App_Name)
+	@echo "The project has ben built in release hardware mode."
+	@echo "Please sign the enclaves (Enclave1.so, Enclave2.so, Enclave3.so) first with your signing keys before you run the $(App_Name) to launch and access the enclave."
+	@echo "To sign the enclaves use the following commands:"
+	@echo "   $(SGX_ENCLAVE_SIGNER) sign -key <key1> -enclave Enclave1.so -out <$(Enclave_Name_1)> -config Enclave1/Enclave1.config.xml"
+	@echo "   $(SGX_ENCLAVE_SIGNER) sign -key <key2> -enclave Enclave2.so -out <$(Enclave_Name_2)> -config Enclave2/Enclave2.config.xml"
+	@echo "   $(SGX_ENCLAVE_SIGNER) sign -key <key3> -enclave Enclave3.so -out <$(Enclave_Name_3)> -config Enclave3/Enclave3.config.xml"
+	@echo "You can also sign the enclaves using an external signing tool."
 	@echo "To build the project in simulation mode set SGX_MODE=SIM. To build the project in prerelease mode set SGX_PRERELEASE=1 and SGX_MODE=HW."
 else
-all: $(App_Name) $(Signed_Enclave_Name)
+target: $(Enclave_Name_1) $(Enclave_Name_2) $(Enclave_Name_3) $(App_Name)
 ifeq ($(Build_Mode), HW_DEBUG)
 	@echo "The project has been built in debug hardware mode."
 else ifeq ($(Build_Mode), SIM_DEBUG)
@@ -188,57 +225,131 @@ else
 endif
 endif
 
-run: all
-ifneq ($(Build_Mode), HW_RELEASE)
-	@$(CURDIR)/$(App_Name)
-	@echo "RUN  =>  $(App_Name) [$(SGX_MODE)|$(SGX_ARCH), OK]"
-endif
+.config_$(Build_Mode)_$(SGX_ARCH)_$(LAv2_MACRO):
+	@rm -rf .config_* $(App_Name) *.so *.a App/*.o Enclave1/*.o Enclave1/*_t.* Enclave1/*_u.* Enclave2/*.o Enclave2/*_t.* Enclave2/*_u.* Enclave3/*.o Enclave3/*_t.* Enclave3/*_u.*
+	@touch .config_$(Build_Mode)_$(SGX_ARCH)_$(LAv2_MACRO)
 
 ######## App Objects ########
-
-App/Enclave_u.c: $(SGX_EDGER8R) Enclave/Enclave.edl
-	@cd App && $(SGX_EDGER8R) --untrusted ../Enclave/Enclave.edl --search-path ../Enclave --search-path $(SGX_SDK)/include
+Enclave1/Enclave1_u.h: $(SGX_EDGER8R) Enclave1/Enclave1.edl
+	@cd Enclave1 && $(SGX_EDGER8R) --use-prefix --untrusted ../Enclave1/Enclave1.edl --search-path $(SGX_SDK)/include 
 	@echo "GEN  =>  $@"
 
-App/Enclave_u.o: App/Enclave_u.c
+Enclave1/Enclave1_u.c: Enclave1/Enclave1_u.h
+
+App/Enclave1_u.o: Enclave1/Enclave1_u.c
 	@$(CC) $(App_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
-App/%.o: App/%.cpp
-	@$(CXX) $(App_Cpp_Flags) -c $< -o $@
+Enclave2/Enclave2_u.h: $(SGX_EDGER8R) Enclave2/Enclave2.edl
+	@cd Enclave2 && $(SGX_EDGER8R) --use-prefix --untrusted ../Enclave2/Enclave2.edl --search-path $(SGX_SDK)/include 
+	@echo "GEN  =>  $@"
+
+Enclave2/Enclave2_u.c: Enclave2/Enclave2_u.h
+
+App/Enclave2_u.o: Enclave2/Enclave2_u.c
+	@$(CC) $(App_C_Flags) -c $< -o $@
+	@echo "CC   <=  $<"
+
+Enclave3/Enclave3_u.h: $(SGX_EDGER8R) Enclave3/Enclave3.edl
+	@cd Enclave3 && $(SGX_EDGER8R) --use-prefix --untrusted ../Enclave3/Enclave3.edl --search-path $(SGX_SDK)/include 
+	@echo "GEN  =>  $@"
+
+Enclave3/Enclave3_u.c:  Enclave3/Enclave3_u.h
+
+App/Enclave3_u.o: Enclave3/Enclave3_u.c
+	@$(CC) $(App_C_Flags) -c $< -o $@
+	@echo "CC   <=  $<"
+
+App/%.o: App/%.cpp Enclave1/Enclave1_u.h Enclave2/Enclave2_u.h Enclave3/Enclave3_u.h
+	@$(CXX) $(App_Cxx_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-$(App_Name): App/Enclave_u.o $(App_Cpp_Objects)
+$(App_Name): App/Enclave1_u.o App/Enclave2_u.o App/Enclave3_u.o $(App_Cpp_Objects) $(UnTrustLib_Name)
 	@$(CXX) $^ -o $@ $(App_Link_Flags)
 	@echo "LINK =>  $@"
 
 
 ######## Enclave Objects ########
 
-Enclave/Enclave_t.c: $(SGX_EDGER8R) Enclave/Enclave.edl
-	@cd Enclave && $(SGX_EDGER8R) --trusted ../Enclave/Enclave.edl --search-path ../Enclave --search-path $(SGX_SDK)/include
+Enclave1/Enclave1_t.h: $(SGX_EDGER8R) Enclave1/Enclave1.edl
+	@cd Enclave1 && $(SGX_EDGER8R) --use-prefix --trusted ../Enclave1/Enclave1.edl --search-path $(SGX_SDK)/include 
 	@echo "GEN  =>  $@"
 
-Enclave/Enclave_t.o: Enclave/Enclave_t.c
+Enclave1/Enclave1_t.c: Enclave1/Enclave1_t.h
+
+Enclave1/Enclave1_t.o: Enclave1/Enclave1_t.c
 	@$(CC) $(Enclave_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
-Enclave/%.o: Enclave/%.cpp
-	@$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
+Enclave1/%.o: Enclave1/%.cpp Enclave1/Enclave1_t.h
+	@$(CXX) $(Enclave_Cxx_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-$(Enclave_Name): Enclave/Enclave_t.o $(Enclave_Cpp_Objects) $(Enclave_C_Objects)
-	@$(CXX) $^ -o $@ $(Enclave_Link_Flags)
+Enclave1.so: Enclave1/Enclave1_t.o $(Enclave_Cpp_Objects_1)
+	@$(CXX) Enclave1/Enclave1_t.o $(Enclave_Cpp_Objects_1) -o $@ $(Enclave1_Link_Flags)
 	@echo "LINK =>  $@"
 
-MAGEIN_FILE ?= mage.bin
-MAGEOUT_FILE ?= mage.bin
-$(Signed_Enclave_Name): $(Enclave_Name)
-	@$(SGX_ENCLAVE_SIGNER) genmage -key Enclave/Enclave_private.pem -enclave $(Enclave_Name) -out $@ -config $(Enclave_Config_File) -mageout $(MAGEOUT_FILE)
-	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave/Enclave_private.pem -enclave $(Enclave_Name) -out $@ -config $(Enclave_Config_File) -magein $(MAGEIN_FILE)
+Enclave2/Enclave2_t.h: $(SGX_EDGER8R) Enclave2/Enclave2.edl
+	@cd Enclave2 && $(SGX_EDGER8R)  --use-prefix --trusted ../Enclave2/Enclave2.edl --search-path $(SGX_SDK)/include
+	@echo "GEN  =>  $@"
+
+Enclave2/Enclave2_t.c: Enclave2/Enclave2_t.h
+
+Enclave2/Enclave2_t.o: Enclave2/Enclave2_t.c
+	@$(CC) $(Enclave_C_Flags) -c $< -o $@
+	@echo "CC   <=  $<"
+
+Enclave2/%.o: Enclave2/%.cpp Enclave2/Enclave2_t.h
+	@$(CXX) $(Enclave_Cxx_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+Enclave2.so: Enclave2/Enclave2_t.o $(Enclave_Cpp_Objects_2)
+	@$(CXX) Enclave2/Enclave2_t.o $(Enclave_Cpp_Objects_2) -o $@ $(Enclave2_Link_Flags)
+	@echo "LINK =>  $@"
+
+Enclave3/Enclave3_t.h: $(SGX_EDGER8R) Enclave3/Enclave3.edl
+	@cd Enclave3 && $(SGX_EDGER8R)  --use-prefix --trusted ../Enclave3/Enclave3.edl --search-path $(SGX_SDK)/include
+	@echo "GEN  =>  $@"
+
+Enclave3/Enclave3_t.c: Enclave3/Enclave3_t.h
+
+Enclave3/Enclave3_t.o: Enclave3/Enclave3_t.c
+	@$(CC) $(Enclave_C_Flags) -c $< -o $@
+	@echo "CC   <=  $<"
+
+Enclave3/%.o: Enclave3/%.cpp Enclave3/Enclave3_t.h
+	@$(CXX) $(Enclave_Cxx_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+Enclave3.so: Enclave3/Enclave3_t.o $(Enclave_Cpp_Objects_3)
+	@$(CXX) Enclave3/Enclave3_t.o $(Enclave_Cpp_Objects_3) -o $@ $(Enclave3_Link_Flags)
+	@echo "LINK =>  $@"
+
+MAGE_FILE ?= mage.bin
+
+.PHONY: genmage
+genmage: Enclave1.so Enclave2.so Enclave3.so
+	@rm -f $(MAGE_FILE)
+	@$(SGX_ENCLAVE_SIGNER) genmage -key Enclave1/Enclave1_private.pem -enclave Enclave1.so -out $@ -config Enclave1/Enclave1.config.xml -mageout $(MAGE_FILE)
+	@$(SGX_ENCLAVE_SIGNER) genmage -key Enclave2/Enclave2_private.pem -enclave Enclave2.so -out $@ -config Enclave2/Enclave2.config.xml -mageout $(MAGE_FILE)
+	@$(SGX_ENCLAVE_SIGNER) genmage -key Enclave3/Enclave3_private.pem -enclave Enclave3.so -out $@ -config Enclave3/Enclave3.config.xml -mageout $(MAGE_FILE)
+
+$(Enclave_Name_1): genmage
+	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave1/Enclave1_private.pem -enclave Enclave1.so -out $@ -config Enclave1/Enclave1.config.xml -magein $(MAGE_FILE)
 	@echo "SIGN =>  $@"
 
+$(Enclave_Name_2): genmage
+	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave2/Enclave2_private.pem -enclave Enclave2.so -out $@ -config Enclave2/Enclave2.config.xml -magein $(MAGE_FILE)
+	@echo "SIGN =>  $@"
+
+$(Enclave_Name_3): genmage
+	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave3/Enclave3_private.pem -enclave Enclave3.so -out $@ -config Enclave3/Enclave3.config.xml -magein $(MAGE_FILE)
+	@echo "SIGN =>  $@"
+
+
+######## Clean ########
 .PHONY: clean
 
 clean:
-	@rm -f $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(App_Cpp_Objects) App/Enclave_u.* $(Enclave_Cpp_Objects) Enclave/Enclave_t.* $(MAGEIN_FILE) $(MAGEOUT_FILE)
+	@rm -rf .config_* $(App_Name) *.so *.a App/*.o Enclave1/*.o Enclave1/*_t.* Enclave1/*_u.* Enclave2/*.o Enclave2/*_t.* Enclave2/*_u.* Enclave3/*.o Enclave3/*_t.* Enclave3/*_u.* $(MAGE_FILE)
+

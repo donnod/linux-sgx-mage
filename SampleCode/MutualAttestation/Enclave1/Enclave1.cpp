@@ -30,36 +30,67 @@
  */
 
 
-#ifndef _SGX_MAGE_H_
-#define _SGX_MAGE_H_
+// Enclave1.cpp : Defines the exported functions for the .so application
+#include "sgx_eid.h"
+#include "Enclave1_t.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <stdarg.h>
+#include <stdio.h>      /* vsnprintf */
 
-#define SGX_MAGE_SEC_NAME ".sgx_mage"
-#define SGX_MAGE_SEC_SIZE 4096
-// must be a multiple of 4096 (page size)
+#include "sgx_utils.h"
+#include "sgx_trts.h"
+#include "sgx_tseal.h"
+#include "sgx_mage.h"
 
-typedef struct _sgx_mage_entry_t
+/* 
+ * printf: 
+ *   Invokes OCALL to display the enclave buffer to the terminal.
+ */
+void printf(const char *fmt, ...)
 {
-    uint64_t size;              // number of blocks updated
-    uint64_t offset;            // offset of sgx_mage section
-    uint8_t digest[32];         // sha-256 internal state
-} sgx_mage_entry_t;
-
-typedef struct _sgx_mage_t
-{
-    uint64_t size;
-    sgx_mage_entry_t entries[];
-} sgx_mage_t;
-
-uint64_t sgx_mage_get_size();
-
-sgx_status_t sgx_mage_derive_measurement(uint64_t mage_idx, sgx_measurement_t *mr);
-
-#ifdef __cplusplus
+    char buf[BUFSIZ] = {'\0'};
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, BUFSIZ, fmt, ap);
+    va_end(ap);
+    e1_ocall_print_string(buf);
 }
-#endif
 
-#endif
+sgx_status_t print_measurement()
+{
+    sgx_status_t ret = SGX_SUCCESS;
+    sgx_target_info_t target_info = {};
+    sgx_report_t report;
+    sgx_report_data_t report_data = {{0}};
+    ret = sgx_create_report(&target_info, &report_data, &report);
+    if (ret != SGX_SUCCESS) printf("ERROR get report %x\n", ret);
+    else {
+        for(int i = 0; i < 32; i++) printf("%02x", report.body.mr_enclave.m[i]);
+        printf("\n");
+    }
+    return ret;
+}
+
+uint32_t e1_ecall_main()
+{
+    uint32_t ret = 0;
+
+    printf("Enclave measurement:\n");
+    print_measurement();
+    
+    uint64_t mage_size = sgx_mage_get_size();
+    printf("MAGE has %lu entries:\n", mage_size);
+    sgx_measurement_t mr;
+    for (uint64_t i = 0; i < mage_size; i++) {
+        printf("Entry %d:\n", i);
+        if (SGX_SUCCESS != sgx_mage_derive_measurement(i, &mr)) {
+            printf("failed to generate mage measurement\n");
+            continue;
+        }
+        for (uint64_t j = 0; j < sizeof(mr.m); j++)
+            printf("%02x", mr.m[j]);
+        printf("\n");
+    }
+
+    return ret;
+}

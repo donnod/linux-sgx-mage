@@ -13,7 +13,7 @@
 
 const uint8_t __attribute__((section(SGX_MAGE_SEC_NAME))) sgx_mage_sec_buf[SGX_MAGE_SEC_SIZE] __attribute__((aligned (SE_PAGE_SIZE))) = {};
 
-uint64_t sgx_mage_size()
+uint64_t sgx_mage_get_size()
 {
     sgx_mage_t* mage_hdr = (sgx_mage_t*)sgx_mage_sec_buf;
     if (mage_hdr->size * sizeof(sgx_mage_entry_t) + sizeof(sgx_mage_t) > SGX_MAGE_SEC_SIZE) {
@@ -22,7 +22,7 @@ uint64_t sgx_mage_size()
     return mage_hdr->size;
 }
 
-sgx_status_t sgx_mage_gen_measurement(uint64_t mage_idx, sgx_measurement_t *mr)
+sgx_status_t sgx_mage_derive_measurement(uint64_t mage_idx, sgx_measurement_t *mr)
 {
     sgx_status_t ret = SGX_SUCCESS;
 
@@ -31,7 +31,7 @@ sgx_status_t sgx_mage_gen_measurement(uint64_t mage_idx, sgx_measurement_t *mr)
         return SGX_ERROR_UNEXPECTED;
     }
 
-    sgx_mage_entry_t *mage = mage_hdr->entries + mage_idx * sizeof(sgx_mage_entry_t);
+    sgx_mage_entry_t *mage = mage_hdr->entries + mage_idx;
 
     sgx_sha_state_handle_t sha_handle = NULL;
     if(sgx_sha256_init(&sha_handle) != SGX_SUCCESS)

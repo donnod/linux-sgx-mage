@@ -1364,15 +1364,10 @@ int main(int argc, char* argv[])
     {
         goto clear_return;
     }
-    if(copy_file(path[DLL], path[OUTPUT]) == false)
-    {
-        se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
-        goto clear_return;
-    }
 
     if(mode == GENMAGE) {
         sgx_mage_entry_t mage_t;
-        if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, mage_offset, mage_size, &mage_t, true) == false)
+        if(measure_enclave(enclave_hash, path[DLL], parameter, ignore_error_bits, metadata, &meta_offset, mage_offset, mage_size, &mage_t, true) == false)
         {
             se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
             goto clear_return;
@@ -1380,7 +1375,7 @@ int main(int argc, char* argv[])
         mage_t.offset = mage_offset;
         for (uint64_t i = 0; i < sizeof(mage_t); i++) printf("%02x", reinterpret_cast<uint8_t*>(&mage_t)[i]);
         printf("\n Writing to file %s .\n", path[MAGEOUT]);
-        if(write_data_to_file(path[MAGEOUT], std::ios::binary| std::ios::out, reinterpret_cast<uint8_t*>(&mage_t), sizeof(mage_t), 0) == false)
+        if(write_data_to_file(path[MAGEOUT], std::ios::binary|std::ios::out|std::ios::app, reinterpret_cast<uint8_t*>(&mage_t), sizeof(mage_t), 0) == false)
         {
             se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
             goto clear_return;
@@ -1388,7 +1383,14 @@ int main(int argc, char* argv[])
         se_trace(SE_TRACE_ERROR, SUCCESS_EXIT);
         res = 0;
         goto clear_return;
-    } else if (mode == SIGNMAGE) {
+    }
+    
+    if(copy_file(path[DLL], path[OUTPUT]) == false)
+    {
+        se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+        goto clear_return;
+    }
+    if (mode == SIGNMAGE) {
         printf("\n reading size from file %s .\n", path[MAGEIN]);
         uint64_t magein_size = get_file_size(path[MAGEIN]);
         uint64_t magein_t_size = magein_size + sizeof(sgx_mage_t);

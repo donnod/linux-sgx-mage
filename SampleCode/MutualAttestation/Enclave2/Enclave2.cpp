@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Intel Corporation. All rights reserved.
+ * Copyright (C) 2011-2019 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,11 +30,12 @@
  */
 
 
+// Enclave2.cpp : Defines the exported functions for the DLL application
+#include "sgx_eid.h"
+#include "Enclave2_t.h"
+
 #include <stdarg.h>
 #include <stdio.h>      /* vsnprintf */
-
-#include "Enclave.h"
-#include "Enclave_t.h"  /* print_string */
 
 #include "sgx_utils.h"
 #include "sgx_trts.h"
@@ -52,12 +53,12 @@ void printf(const char *fmt, ...)
     va_start(ap, fmt);
     vsnprintf(buf, BUFSIZ, fmt, ap);
     va_end(ap);
-    ocall_print_string(buf);
+    e2_ocall_print_string(buf);
 }
 
 sgx_status_t print_measurement()
 {
-    uint32_t ret = 0;
+    sgx_status_t ret = SGX_SUCCESS;
     sgx_target_info_t target_info = {};
     sgx_report_t report;
     sgx_report_data_t report_data = {{0}};
@@ -67,20 +68,22 @@ sgx_status_t print_measurement()
         for(int i = 0; i < 32; i++) printf("%02x", report.body.mr_enclave.m[i]);
         printf("\n");
     }
+    return ret;
 }
 
-uint32_t ecall_main()
+uint32_t e2_ecall_main()
 {
     uint32_t ret = 0;
 
+    printf("Enclave measurement:\n");
     print_measurement();
     
-    uint64_t mage_size = sgx_mage_size();
-    printf("mage has %lu entries.\n", mage_size);
+    uint64_t mage_size = sgx_mage_get_size();
+    printf("MAGE has %lu entries:\n", mage_size);
     sgx_measurement_t mr;
     for (uint64_t i = 0; i < mage_size; i++) {
-        printf("MAGE %d:\n", i);
-        if (SGX_SUCCESS != sgx_mage_gen_measurement(i, &mr)) {
+        printf("Entry %d:\n", i);
+        if (SGX_SUCCESS != sgx_mage_derive_measurement(i, &mr)) {
             printf("failed to generate mage measurement\n");
             continue;
         }
