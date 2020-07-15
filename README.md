@@ -1,6 +1,4 @@
-MAGE: Mutual Attestation for a Group of Enclaves without Trusted Third Parties
-
-================================================
+# MAGE: Mutual Attestation for a Group of Enclaves without Trusted Third Parties
 
 MAGE is an extension of Intel SGX SDK to support mutual attestation for a group of enclaves without trusted third parties.
 
@@ -9,10 +7,10 @@ The extension includes:
 - Reserve a read-only data section, named `.sgx_mage`, to store auxiliary information for mutual attestation.
 - Provide APIs for deriving trusted enclaves' measurements from `.sgx_mage`.
 
-### Modified Enclave Loader ([loader](psw/urts/loader.cpp), [parser](psw/urts/parser):
+### Modified Enclave Loader ([psw/urts/loader](psw/urts/loader.cpp), [psw/urts/parser](psw/urts/parser)):
 - Change the order of loading EPC pages, so that the EPC pages in .sgx_mage section are loaded after all other EPC pages.
 
-### Modified Signing Tool ([SignTool](sdk/sign_tool/SignTool)):
+### Modified Signing Tool ([sdk/sign_tool/SignTool](sdk/sign_tool/SignTool)):
 - Extract auxiliary information from enclaves.
 - Insert auxiliary information into the .sgx_mage section of enclaves.
 
