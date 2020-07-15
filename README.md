@@ -8,11 +8,11 @@ The extension includes:
 - Provide APIs for deriving trusted enclaves' measurements from `.sgx_mage`.
 
 ### Modified Enclave Loader ([psw/urts/loader](psw/urts/loader.cpp), [psw/urts/parser](psw/urts/parser)):
-- Change the order of loading EPC pages, so that the EPC pages in .sgx_mage section are loaded after all other EPC pages.
+- Change the order of loading EPC pages, so that the EPC pages in `.sgx_mage` section are loaded after all other EPC pages.
 
 ### Modified Signing Tool ([sdk/sign_tool/SignTool](sdk/sign_tool/SignTool)):
 - Extract auxiliary information from enclaves.
-- Insert auxiliary information into the .sgx_mage section of enclaves.
+- Insert auxiliary information into the `.sgx_mage` section of enclaves.
 
 Build Instructions
 ------------
