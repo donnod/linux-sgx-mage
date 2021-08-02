@@ -69,7 +69,7 @@ extern "C" size_t get_file_size(const char *filename)
     return size;  
 }
 
-extern "C" bool read_file_to_buf(const char *filename, uint8_t *buf, size_t bsize)
+extern "C" bool read_file_to_buf(const char *filename, uint8_t *buf, size_t bsize, long offset)
 {
     if(filename == NULL || buf == NULL || bsize == 0)
         return false;
@@ -79,6 +79,7 @@ extern "C" bool read_file_to_buf(const char *filename, uint8_t *buf, size_t bsiz
         se_trace(SE_TRACE_ERROR, OPEN_FILE_ERROR, filename);
         return false;
     }
+    ifs.seekg(offset, std::ios::beg);
     ifs.read(reinterpret_cast<char *> (buf), bsize);
     if(ifs.fail())
     {

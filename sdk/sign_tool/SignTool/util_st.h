@@ -171,7 +171,7 @@ extern "C" {
 #endif
 
 size_t get_file_size(const char *filename);
-bool read_file_to_buf(const char *filename, uint8_t *buffer, size_t bsize);
+bool read_file_to_buf(const char *filename, uint8_t *buffer, size_t bsize, long offset = 0);
 bool write_data_to_file(const char *filename, std::ios_base::openmode mode, uint8_t *buf, size_t bsize, long offset = 0);
 bool copy_file(const char *source_path, const char *dest_path);
 

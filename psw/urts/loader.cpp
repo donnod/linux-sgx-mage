@@ -341,6 +341,13 @@ int CLoader::build_mage_pages()
 
     se_trace(SE_TRACE_DEBUG, "\n\nbuild_mage_pages: %lx %lx\n", rva, rva + size);
 
+    for(unsigned int i = 0; i< size; i++)
+    {
+        se_trace(SE_TRACE_DEBUG, "%02x", reinterpret_cast<const uint8_t*>(source)[i]);
+    }
+    se_trace(SE_TRACE_DEBUG, "\n\nmage content %lx\n", size);
+
+
     while(offset < size)
     {
         //call driver to add page;
@@ -350,6 +357,8 @@ int CLoader::build_mage_pages()
         {
             //if add page failed , we should remove enclave somewhere;
             return ret;
+        } else {
+            se_trace(SE_TRACE_DEBUG, "\n\nadd_page: %lx\n", offset);
         }
         offset += SE_PAGE_SIZE;
         rva += SE_PAGE_SIZE;

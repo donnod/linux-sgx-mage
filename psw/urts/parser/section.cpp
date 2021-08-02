@@ -35,8 +35,8 @@
 #include <stdlib.h>
 
 Section::Section(const uint8_t* start_addr, uint64_t size, uint64_t virt_size,
-                 uint64_t rva, si_flags_t sf)
-    :m_start_addr(start_addr), m_raw_data_size(size), m_rva(rva),
+                 uint64_t rva, int64_t offset, si_flags_t sf)
+    :m_start_addr(start_addr), m_raw_data_size(size), m_rva(rva), m_offset(offset),
      m_virtual_size(virt_size), m_si_flag(sf)
 {}
 
@@ -57,6 +57,11 @@ uint64_t Section::raw_data_size(void) const
 uint64_t Section::get_rva(void) const
 {
     return m_rva;
+}
+
+uint64_t Section::get_offset(void) const
+{
+    return m_offset;
 }
 
 uint64_t Section::virtual_size(void) const

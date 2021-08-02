@@ -58,6 +58,8 @@ uint64_t sgx_mage_get_size();
 
 sgx_status_t sgx_mage_derive_measurement(uint64_t mage_idx, sgx_measurement_t *mr);
 
+uint8_t* get_sgx_mage_sec_buf_addr();
+
 #ifdef __cplusplus
 }
 #endif

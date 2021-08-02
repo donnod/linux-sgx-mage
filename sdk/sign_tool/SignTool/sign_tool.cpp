@@ -145,7 +145,7 @@ static bool get_enclave_info(BinParser *parser, bin_fmt_t *bf, uint64_t * meta_o
 // measure_enclave():
 //    1. Get the enclave hash by loading enclave
 //    2. Get the enclave info - metadata offset and enclave file format
-static bool measure_enclave(uint8_t *hash, const char *dllpath, const xml_parameter_t *parameter, uint32_t ignore_error_bits, metadata_t *metadata, uint64_t *meta_offset, uint64_t &mage_offset, uint64_t &mage_size, sgx_mage_entry_t * mage_t = NULL, bool for_sign = false)
+static bool measure_enclave(uint8_t *hash, const char *dllpath, const xml_parameter_t *parameter, uint32_t ignore_error_bits, metadata_t *metadata, uint64_t *meta_offset, uint64_t &mage_rva, uint64_t &mage_offset, uint64_t &mage_size, sgx_mage_entry_t * mage_t = NULL, bool for_sign = false)
 {
     assert(hash && dllpath && metadata && meta_offset);
     bool res = false;
@@ -180,7 +180,8 @@ static bool measure_enclave(uint8_t *hash, const char *dllpath, const xml_parame
     }
     const Section* mage_section = parser->get_mage_section();
     if (mage_section != NULL) {
-        mage_offset = mage_section->get_rva();
+        mage_rva = mage_section->get_rva();
+        mage_offset = mage_section->get_offset();
         mage_size = mage_section->virtual_size();
     }
     parser->set_for_sign(for_sign);
@@ -1314,6 +1315,7 @@ int main(int argc, char* argv[])
     int key_type = UNIDENTIFIABLE_KEY; //indicate the type of the input key file
     size_t parameter_count = sizeof(parameter)/sizeof(parameter[0]);
     uint64_t meta_offset = 0;
+    uint64_t mage_rva = 0;
     uint64_t mage_offset = 0;
     uint64_t mage_size = 0;
     uint32_t ignore_error_bits = 0;
@@ -1367,12 +1369,12 @@ int main(int argc, char* argv[])
 
     if(mode == GENMAGE) {
         sgx_mage_entry_t mage_t;
-        if(measure_enclave(enclave_hash, path[DLL], parameter, ignore_error_bits, metadata, &meta_offset, mage_offset, mage_size, &mage_t, true) == false)
+        if(measure_enclave(enclave_hash, path[DLL], parameter, ignore_error_bits, metadata, &meta_offset, mage_rva, mage_offset, mage_size, &mage_t, true) == false)
         {
             se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
             goto clear_return;
         }
-        mage_t.offset = mage_offset;
+        mage_t.offset = mage_rva;
         for (uint64_t i = 0; i < sizeof(mage_t); i++) printf("%02x", reinterpret_cast<uint8_t*>(&mage_t)[i]);
         printf("\n Writing to file %s .\n", path[MAGEOUT]);
         if(write_data_to_file(path[MAGEOUT], std::ios::binary|std::ios::out|std::ios::app, reinterpret_cast<uint8_t*>(&mage_t), sizeof(mage_t), 0) == false)
@@ -1416,7 +1418,7 @@ int main(int argc, char* argv[])
         }
         printf("\n read %lu entires %lu size from file %s .\n", magein_t->size, magein_t_size, path[MAGEIN]);
         
-        if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, mage_offset, mage_size, NULL, true) == false)
+        if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, mage_rva, mage_offset, mage_size, NULL, true) == false)
         {
             se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
             goto clear_return;
@@ -1428,11 +1430,22 @@ int main(int argc, char* argv[])
             goto clear_return;
         }
         for (uint64_t i = 0; i < magein_t_size; i++) printf("%02x", reinterpret_cast<uint8_t*>(magein_t)[i]);
-        printf("\n Writing to %lu %s .\n", magein_t_size, path[MAGEOUT]);
+        printf("\n Writing %lu to %s @ %lx .\n", magein_t_size, path[OUTPUT], mage_offset);
+        // verify wriiten mage
+        uint8_t *magein_written_t = (uint8_t *)malloc(magein_t_size);
+        if(read_file_to_buf(path[OUTPUT], magein_written_t, magein_t_size, mage_offset) == false)
+        {
+            se_trace(SE_TRACE_ERROR, READ_FILE_ERROR, path[UNSIGNED]);
+            delete [] magein_written_t;
+            goto clear_return;
+        }
+        for (uint64_t i = 0; i < magein_t_size; i++) printf("%02x", magein_written_t[i]);
+        printf("\n Reading %lu from %s @ %lx .\n", magein_t_size, path[OUTPUT], mage_offset);
+        
         
     }
 
-    if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, mage_offset, mage_size) == false)
+    if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, mage_rva, mage_offset, mage_size) == false)
     {
         se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
         se_trace(SE_TRACE_ERROR, "measure_enclave\n");

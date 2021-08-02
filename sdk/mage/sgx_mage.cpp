@@ -108,3 +108,8 @@ CLEANUP:
     sgx_sha256_close(sha_handle);
     return ret;
 }
+
+uint8_t* get_sgx_mage_sec_buf_addr()
+{
+    return reinterpret_cast<uint8_t*>(reinterpret_cast<uint64_t>(sgx_mage_sec_buf));
+}
