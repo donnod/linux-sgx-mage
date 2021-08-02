@@ -1,6 +1,6 @@
 # MAGE: Mutual Attestation for a Group of Enclaves without Trusted Third Parties
 
-MAGE is an extension of Intel SGX SDK to support mutual attestation for a group of enclaves without trusted third parties.
+MAGE is an extension of Intel SGX SDK ([v2.6](https://github.com/intel/linux-sgx/tree/sgx_2.6)) to support mutual attestation for a group of enclaves without trusted third parties.
 
 The extension includes:
 ### MAGE Library ([sdk/mage](sdk/mage)):
@@ -16,7 +16,7 @@ The extension includes:
 
 Build Instructions
 ------------
-Follow the original build instructions to build the SDK [linux-sgx](https://github.com/01org/linux-sgx).
+Follow the original build instructions to build the SDK [linux-sgx_2.6](https://github.com/intel/linux-sgx/tree/sgx_2.6).
 
 Sample Code
 ------------
