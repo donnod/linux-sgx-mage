@@ -21,3 +21,7 @@ Follow the original build instructions to build the SDK [linux-sgx_2.6](https://
 Sample Code
 ------------
 Sample Code for three enclaves to mutually derive measurements is provided in [SampleCode/MutualAttestation](SampleCode/MutualAttestation).
+
+Integration with Open-Sourced SGX Application
+------------
+[OPERA-MAGE: Open Remote Attestation for Intel's Secure Enclaves (MAGE version)](https://github.com/donnod/opera-mage)

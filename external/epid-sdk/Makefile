@@ -182,3 +182,4 @@ build:
 	$(MAKE) all
 	$(MAKE) check
 	$(MAKE) install
+
