@@ -25,3 +25,11 @@ Sample Code for three enclaves to mutually derive measurements is provided in [S
 Integration with Open-Sourced SGX Application
 ------------
 [OPERA-MAGE: Open Remote Attestation for Intel's Secure Enclaves (MAGE version)](https://github.com/donnod/opera-mage)
+
+Integration with Open-Sourced SGX Application
+------------
+This repo is an prototype implementation of the following paper:
+
+[USENIX Security’22] *MAGE: Mutual Attestation for a Group of Enclaves without Trusted Third Parties* by Guoxing Chen and Yinqian Zhang
+
+The code and instructions for reproducing the results presented in the paper can be found in [sec22ae](https://github.com/donnod/sec22ae).
