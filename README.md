@@ -26,7 +26,7 @@ Integration with Open-Sourced SGX Application
 ------------
 [OPERA-MAGE: Open Remote Attestation for Intel's Secure Enclaves (MAGE version)](https://github.com/donnod/opera-mage)
 
-Integration with Open-Sourced SGX Application
+Artifact Evaluation
 ------------
 This repo is an prototype implementation of the following paper:
 
