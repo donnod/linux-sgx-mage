@@ -326,6 +326,7 @@ Enclave3.so: Enclave3/Enclave3_t.o $(Enclave_Cpp_Objects_3)
 	@echo "LINK =>  $@"
 
 MAGE_FILE ?= mage.bin
+PENGLAI_MAGE_FILE ?= penglai_mage.bin
 
 .PHONY: genmage
 genmage: Enclave1.so Enclave2.so Enclave3.so
@@ -335,15 +336,15 @@ genmage: Enclave1.so Enclave2.so Enclave3.so
 	@$(SGX_ENCLAVE_SIGNER) genmage -key Enclave3/Enclave3_private.pem -enclave Enclave3.so -out $@ -config Enclave3/Enclave3.config.xml -mageout $(MAGE_FILE)
 
 $(Enclave_Name_1): genmage
-	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave1/Enclave1_private.pem -enclave Enclave1.so -out $@ -config Enclave1/Enclave1.config.xml -magein $(MAGE_FILE)
+	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave1/Enclave1_private.pem -enclave Enclave1.so -out $@ -config Enclave1/Enclave1.config.xml -magein $(MAGE_FILE) -exmagein $(PENGLAI_MAGE_FILE)
 	@echo "SIGN =>  $@"
 
 $(Enclave_Name_2): genmage
-	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave2/Enclave2_private.pem -enclave Enclave2.so -out $@ -config Enclave2/Enclave2.config.xml -magein $(MAGE_FILE)
+	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave2/Enclave2_private.pem -enclave Enclave2.so -out $@ -config Enclave2/Enclave2.config.xml -magein $(MAGE_FILE) -exmagein $(PENGLAI_MAGE_FILE)
 	@echo "SIGN =>  $@"
 
 $(Enclave_Name_3): genmage
-	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave3/Enclave3_private.pem -enclave Enclave3.so -out $@ -config Enclave3/Enclave3.config.xml -magein $(MAGE_FILE)
+	@$(SGX_ENCLAVE_SIGNER) signmage -key Enclave3/Enclave3_private.pem -enclave Enclave3.so -out $@ -config Enclave3/Enclave3.config.xml -magein $(MAGE_FILE) -exmagein $(PENGLAI_MAGE_FILE)
 	@echo "SIGN =>  $@"
 
 

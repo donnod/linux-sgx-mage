@@ -97,6 +97,7 @@ typedef enum _file_path_t
     DUMPFILE,
     CSSFILE,
     MAGEIN,
+    EXMAGEIN,
     MAGEOUT
 } file_path_t;
 
@@ -265,7 +266,7 @@ static bool measure_enclave(uint8_t *hash, const char *dllpath, const xml_parame
 //       fill the enclave_css_t structure with enclave_hash
 //       If the 'rsa' is not null, fill the key part
 //       If the path[UNSIGNED] != NULL, update the header.date(CATSIG mode)
-static bool fill_enclave_css(const RSA *rsa, const char **path, 
+static bool fill_enclave_css(const RSA *rsa, const char **path,
                              const uint8_t *enclave_hash, enclave_css_t *css)
 {
     assert(enclave_hash != NULL && path != NULL && css != NULL);
@@ -348,7 +349,7 @@ static bool fill_enclave_css(const RSA *rsa, const char **path,
     return true;
 }
 
-static bool calc_RSAq1q2(int length_s, const uint8_t *data_s, int length_m, const uint8_t *data_m, 
+static bool calc_RSAq1q2(int length_s, const uint8_t *data_s, int length_m, const uint8_t *data_m,
     uint8_t *data_q1, uint8_t *data_q2)
 {
     assert(data_s && data_m && data_q1 && data_q2);
@@ -380,8 +381,8 @@ static bool calc_RSAq1q2(int length_s, const uint8_t *data_s, int length_m, cons
 
         //q1 = floor(signature*signature/modulus)
         //q2 = floor((signature*signature.signature - q1*signature*Modulus)/Modulus)
-        if(BN_mul(ptemp1, pS, pS, ctx) != 1) 
-            break; 
+        if(BN_mul(ptemp1, pS, pS, ctx) != 1)
+            break;
         if(BN_div(pQ1, ptemp2, ptemp1, pM, ctx) !=1)
             break;
         if(BN_mul(ptemp1, pS, ptemp2, ctx) !=1)
@@ -596,6 +597,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-dumpfile", NULL, PAR_OPTIONAL},
         {"-cssfile", NULL, PAR_OPTIONAL},
         {"-magein", NULL, PAR_INVALID},
+        {"-exmagein", NULL, PAR_INVALID},
         {"-mageout", NULL, PAR_INVALID}};
     param_struct_t params_gendata[] = {
         {"-enclave", NULL, PAR_REQUIRED},
@@ -607,6 +609,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-dumpfile", NULL, PAR_INVALID},
         {"-cssfile", NULL, PAR_INVALID},
         {"-magein", NULL, PAR_INVALID},
+        {"-exmagein", NULL, PAR_INVALID},
         {"-mageout", NULL, PAR_INVALID}};
     param_struct_t params_catsig[] = {
         {"-enclave", NULL, PAR_REQUIRED},
@@ -618,6 +621,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-dumpfile", NULL, PAR_OPTIONAL},
         {"-cssfile", NULL, PAR_OPTIONAL},
         {"-magein", NULL, PAR_INVALID},
+        {"-exmagein", NULL, PAR_INVALID},
         {"-mageout", NULL, PAR_INVALID}};
     param_struct_t params_dump[] = {
         {"-enclave", NULL, PAR_REQUIRED},
@@ -629,6 +633,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-dumpfile", NULL, PAR_REQUIRED},
         {"-cssfile", NULL, PAR_OPTIONAL},
         {"-magein", NULL, PAR_INVALID},
+        {"-exmagein", NULL, PAR_INVALID},
         {"-mageout", NULL, PAR_INVALID}};
     param_struct_t params_genmage[] = {
         {"-enclave", NULL, PAR_REQUIRED},
@@ -640,6 +645,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-dumpfile", NULL, PAR_OPTIONAL},
         {"-cssfile", NULL, PAR_OPTIONAL},
         {"-magein", NULL, PAR_INVALID},
+        {"-exmagein", NULL, PAR_INVALID},
         {"-mageout", NULL, PAR_REQUIRED}};
     param_struct_t params_signmage[] = {
         {"-enclave", NULL, PAR_REQUIRED},
@@ -651,6 +657,7 @@ static bool cmdline_parse(unsigned int argc, char *argv[], int *mode, const char
         {"-dumpfile", NULL, PAR_OPTIONAL},
         {"-cssfile", NULL, PAR_OPTIONAL},
         {"-magein", NULL, PAR_REQUIRED},
+        {"-exmagein", NULL, PAR_OPTIONAL},
         {"-mageout", NULL, PAR_INVALID}};
 
 
@@ -1257,7 +1264,7 @@ static bool dump_enclave_metadata(const char *enclave_path, const char *dumpfile
         return false;
     }
 
-    const metadata_t *metadata = GET_PTR(metadata_t, mh->base_addr, meta_offset); 
+    const metadata_t *metadata = GET_PTR(metadata_t, mh->base_addr, meta_offset);
     if(print_metadata(dumpfile_path, metadata) == false)
     {
         close_handle(fh);
@@ -1307,7 +1314,7 @@ int main(int argc, char* argv[])
                                    {"ISVEXTPRODID_H", ISVEXTPRODID_MAX,  0,              0,                   0},
                                    {"ISVEXTPRODID_L", ISVEXTPRODID_MAX,  0,              0,                   0}};
 
-    const char *path[10] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+    const char *path[11] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
     uint8_t enclave_hash[SGX_HASH_SIZE] = {0};
     uint8_t metadata_raw[METADATA_SIZE];
     metadata_t *metadata = (metadata_t*)metadata_raw;
@@ -1386,7 +1393,7 @@ int main(int argc, char* argv[])
         res = 0;
         goto clear_return;
     }
-    
+
     if(copy_file(path[DLL], path[OUTPUT]) == false)
     {
         se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
@@ -1417,7 +1424,7 @@ int main(int argc, char* argv[])
             goto clear_return;
         }
         printf("\n read %lu entires %lu size from file %s .\n", magein_t->size, magein_t_size, path[MAGEIN]);
-        
+
         if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, mage_rva, mage_offset, mage_size, NULL, true) == false)
         {
             se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
@@ -1429,20 +1436,21 @@ int main(int argc, char* argv[])
             se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
             goto clear_return;
         }
-        for (uint64_t i = 0; i < magein_t_size; i++) printf("%02x", reinterpret_cast<uint8_t*>(magein_t)[i]);
-        printf("\n Writing %lu to %s @ %lx .\n", magein_t_size, path[OUTPUT], mage_offset);
-        // verify wriiten mage
-        uint8_t *magein_written_t = (uint8_t *)malloc(magein_t_size);
-        if(read_file_to_buf(path[OUTPUT], magein_written_t, magein_t_size, mage_offset) == false)
+        printf("\n reading size from file %s .\n", path[EXMAGEIN]);
+        uint64_t exmagein_size = get_file_size(path[EXMAGEIN]);
+
+        uint8_t *exmagein_t = (uint8_t *)malloc(exmagein_size);
+        if(read_file_to_buf(path[EXMAGEIN], exmagein_t, exmagein_size) == false)
         {
             se_trace(SE_TRACE_ERROR, READ_FILE_ERROR, path[UNSIGNED]);
-            delete [] magein_written_t;
+            delete [] exmagein_t;
             goto clear_return;
         }
-        for (uint64_t i = 0; i < magein_t_size; i++) printf("%02x", magein_written_t[i]);
-        printf("\n Reading %lu from %s @ %lx .\n", magein_t_size, path[OUTPUT], mage_offset);
-        
-        
+        if(write_data_to_file(path[OUTPUT], std::ios::in | std::ios::binary| std::ios::out, reinterpret_cast<uint8_t*>(exmagein_t), exmagein_size, mage_offset + magein_t_size) == false)
+        {
+            se_trace(SE_TRACE_ERROR, OVERALL_ERROR);
+            goto clear_return;
+        }
     }
 
     if(measure_enclave(enclave_hash, path[OUTPUT], parameter, ignore_error_bits, metadata, &meta_offset, mage_rva, mage_offset, mage_size) == false)

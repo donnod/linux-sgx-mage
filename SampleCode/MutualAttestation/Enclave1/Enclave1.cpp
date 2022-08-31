@@ -42,8 +42,8 @@
 #include "sgx_tseal.h"
 #include "sgx_mage.h"
 
-/* 
- * printf: 
+/*
+ * printf:
  *   Invokes OCALL to display the enclave buffer to the terminal.
  */
 void printf(const char *fmt, ...)
@@ -73,24 +73,35 @@ sgx_status_t print_measurement()
 
 uint32_t e1_ecall_main()
 {
-    uint32_t ret = 0;
+  uint32_t ret = 0;
 
-    printf("Enclave measurement:\n");
-    print_measurement();
-    
-    uint64_t mage_size = sgx_mage_get_size();
-    printf("MAGE has %lu entries:\n", mage_size);
-    sgx_measurement_t mr;
-    for (uint64_t i = 0; i < mage_size; i++) {
-        printf("Entry %d:\n", i);
-        if (SGX_SUCCESS != sgx_mage_derive_measurement(i, &mr)) {
-            printf("failed to generate mage measurement\n");
-            continue;
-        }
-        for (uint64_t j = 0; j < sizeof(mr.m); j++)
-            printf("%02x", mr.m[j]);
-        printf("\n");
-    }
+  printf("Enclave measurement:\n");
+  print_measurement();
 
-    return ret;
+  uint64_t mage_size = sgx_mage_get_size();
+  printf("MAGE has %lu entries:\n", mage_size);
+  sgx_measurement_t mr;
+  for (uint64_t i = 0; i < mage_size; i++) {
+      printf("Entry %d:\n", i);
+      if (SGX_SUCCESS != sgx_mage_derive_measurement(i, &mr)) {
+          printf("failed to generate mage measurement\n");
+          continue;
+      }
+      for (uint64_t j = 0; j < sizeof(mr.m); j++)
+          printf("%02x", mr.m[j]);
+      printf("\n");
+  }
+
+  uint64_t pengl_mage_size = penglai_mage_get_size();
+  printf("MAGE has %lu penglai entries:\n", pengl_mage_size);
+  unsigned char hash[32];
+  for (uint64_t i = 0; i < pengl_mage_size; i++) {
+      printf("Entry %d:\n", i);
+      penglai_mage_derive_measurement(i, hash, 0);
+      for (uint64_t j = 0; j < 32; j++)
+          printf("%02x", hash[j]);
+      printf("\n");
+  }
+
+  return ret;
 }

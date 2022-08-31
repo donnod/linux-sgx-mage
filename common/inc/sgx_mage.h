@@ -54,11 +54,44 @@ typedef struct _sgx_mage_t
     sgx_mage_entry_t entries[];
 } sgx_mage_t;
 
+
+#define PENGLAI_SM3_SIZE sizeof(penglai_mage_entry_t)-sizeof(unsigned long)
+/**
+ * \brief          SM3 context structure
+ */
+struct sm3_context
+{
+    uint64_t total[2];     /*!< number of bytes processed  */
+    uint64_t state[8];     /*!< intermediate digest state  */
+    uint8_t buffer[64];   /*!< data block being processed */
+
+    uint8_t ipad[64];     /*!< HMAC: inner padding        */
+    uint8_t opad[64];     /*!< HMAC: outer padding        */
+};
+
+typedef struct _penglai_mage_entry_t
+{
+    uint64_t offset;            // offset of penglai_mage section
+    uint64_t total[2];     /*!< number of bytes processed  */
+    uint64_t state[8];     /*!< intermediate digest state  */
+    uint8_t buffer[64];   /*!< data block being processed */
+} penglai_mage_entry_t;
+
+typedef struct _penglai_mage_t
+{
+  uint64_t size;
+  penglai_mage_entry_t entries[];
+} penglai_mage_t;
+
 uint64_t sgx_mage_get_size();
 
 sgx_status_t sgx_mage_derive_measurement(uint64_t mage_idx, sgx_measurement_t *mr);
 
 uint8_t* get_sgx_mage_sec_buf_addr();
+
+uint64_t penglai_mage_get_size();
+
+void penglai_mage_derive_measurement(unsigned long mage_idx, unsigned char* hash, unsigned long nonce);
 
 #ifdef __cplusplus
 }
